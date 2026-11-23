@@ -33,6 +33,7 @@ import {
 } from '@/components/ui/command'
 import { useSearch } from '@/context/search-provider'
 import { useTheme } from '@/context/theme-provider'
+import { useIsSidebarModuleVisible } from '@/hooks/use-sidebar-config'
 import { useSidebarView } from '@/hooks/use-sidebar-view'
 
 import { ScrollArea } from './ui/scroll-area'
@@ -45,6 +46,8 @@ export function CommandMenu() {
   // Offer the same pages as the sidebar, so search never lists pages the
   // user's role or the sidebar settings hide.
   const { navGroups } = useSidebarView()
+  const profileVisible = useIsSidebarModuleVisible('/profile')
+  const securityVisible = useIsSidebarModuleVisible('/security')
 
   const runCommand = React.useCallback(
     (command: () => unknown) => {
@@ -63,43 +66,72 @@ export function CommandMenu() {
             <CommandEmpty>{t('No results found.')}</CommandEmpty>
             {navGroups.map((group) => (
               <CommandGroup key={group.id || group.title} heading={group.title}>
-                {group.items.map((navItem) => {
-                  if (navItem.url) {
-                    return (
+                {group.items
+                  .flatMap((item) => [
+                    item,
+                    ...(item.pages ?? []).filter(
+                      (page) => page.title !== item.title
+                    ),
+                  ])
+                  .map((navItem) => {
+                    if (navItem.url) {
+                      return (
+                        <CommandItem
+                          key={`${navItem.title}-${navItem.url}`}
+                          value={navItem.title}
+                          onSelect={() => {
+                            runCommand(() => navigate({ to: navItem.url }))
+                          }}
+                        >
+                          <div className='flex size-4 items-center justify-center'>
+                            <ArrowRight className='text-muted-foreground/80 size-2' />
+                          </div>
+                          {navItem.title}
+                        </CommandItem>
+                      )
+                    }
+
+                    return navItem.items?.map((subItem) => (
                       <CommandItem
-                        key={`${navItem.title}-${navItem.url}`}
-                        value={navItem.title}
+                        key={`${navItem.title}-${subItem.url}`}
+                        value={`${navItem.title}-${subItem.url}`}
                         onSelect={() => {
-                          runCommand(() => navigate({ to: navItem.url }))
+                          runCommand(() => navigate({ to: subItem.url }))
                         }}
                       >
                         <div className='flex size-4 items-center justify-center'>
                           <ArrowRight className='text-muted-foreground/80 size-2' />
                         </div>
-                        {navItem.title}
+                        {navItem.title} <ChevronRight /> {subItem.title}
                       </CommandItem>
-                    )
-                  }
-
-                  return navItem.items?.map((subItem) => (
-                    <CommandItem
-                      key={`${navItem.title}-${subItem.url}`}
-                      value={`${navItem.title}-${subItem.url}`}
-                      onSelect={() => {
-                        runCommand(() => navigate({ to: subItem.url }))
-                      }}
-                    >
-                      <div className='flex size-4 items-center justify-center'>
-                        <ArrowRight className='text-muted-foreground/80 size-2' />
-                      </div>
-                      {navItem.title} <ChevronRight /> {subItem.title}
-                    </CommandItem>
-                  ))
-                })}
+                    ))
+                  })}
               </CommandGroup>
             ))}
+            <CommandGroup heading={t('Profile')}>
+              {profileVisible && (
+                <CommandItem
+                  value='profile'
+                  onSelect={() =>
+                    runCommand(() => navigate({ to: '/profile' }))
+                  }
+                >
+                  {t('Profile')}
+                </CommandItem>
+              )}
+              {securityVisible && (
+                <CommandItem
+                  value='security'
+                  onSelect={() =>
+                    runCommand(() => navigate({ to: '/security' }))
+                  }
+                >
+                  {t('Security & Access')}
+                </CommandItem>
+              )}
+            </CommandGroup>
             <CommandSeparator />
-            <CommandGroup heading='Theme'>
+            <CommandGroup heading={t('Theme')}>
               <CommandItem onSelect={() => runCommand(() => setTheme('light'))}>
                 <Sun /> <span>{t('Light')}</span>
               </CommandItem>

@@ -468,7 +468,7 @@ func TokenAuthReadOnly() func(c *gin.Context) {
 			key = strings.TrimSpace(key[7:])
 		}
 		key = strings.TrimPrefix(key, "sk-")
-		parts := strings.Split(key, "-")
+		parts := splitRelayTokenKey(key)
 		key = parts[0]
 
 		token, err := model.GetTokenByKey(key, false)
@@ -479,6 +479,12 @@ func TokenAuthReadOnly() func(c *gin.Context) {
 				common.SysLog(common.LogText("TokenAuthReadOnly GetTokenByKey database error: %s", err.Error()))
 				common.ApiErrorStatus(c, http.StatusInternalServerError, errors.New(common.TranslateMessage(c, i18n.MsgDatabaseError)))
 			}
+			c.Abort()
+			return
+		}
+
+		if err := model.ValidateEnterpriseTokenScope(token); err != nil {
+			common.ApiErrorStatus(c, http.StatusUnauthorized, errors.New(common.TranslateMessage(c, i18n.MsgTokenInvalid)))
 			c.Abort()
 			return
 		}
@@ -562,11 +568,11 @@ func TokenAuth() func(c *gin.Context) {
 				key = strings.TrimSpace(key[7:])
 			}
 			key = strings.TrimPrefix(key, "sk-")
-			parts = strings.Split(key, "-")
+			parts = splitRelayTokenKey(key)
 			key = parts[0]
 		} else {
 			key = strings.TrimPrefix(key, "sk-")
-			parts = strings.Split(key, "-")
+			parts = splitRelayTokenKey(key)
 			key = parts[0]
 		}
 		token, err := model.ValidateUserToken(key)
@@ -602,6 +608,11 @@ func TokenAuth() func(c *gin.Context) {
 				return
 			}
 			logger.LogDebug(c, "Client IP %s passed the token IP restrictions check", clientIp)
+		}
+
+		if err := model.ValidateEnterpriseTokenScope(token); err != nil {
+			abortWithOpenAiMessage(c, http.StatusUnauthorized, common.TranslateMessage(c, i18n.MsgTokenInvalid))
+			return
 		}
 
 		userCache, err := model.GetUserCache(token.UserId)
@@ -720,4 +731,16 @@ func SetupContextForToken(c *gin.Context, token *model.Token, parts ...string) e
 		}
 	}
 	return nil
+}
+
+// splitRelayTokenKey preserves the vg credential prefix while retaining the
+// administrator-only channel suffix supported by legacy relay keys.
+func splitRelayTokenKey(key string) []string {
+	suffix, enterprise := strings.CutPrefix(key, "vg-")
+	if !enterprise {
+		return strings.Split(key, "-")
+	}
+	parts := strings.Split(suffix, "-")
+	parts[0] = "vg-" + parts[0]
+	return parts
 }

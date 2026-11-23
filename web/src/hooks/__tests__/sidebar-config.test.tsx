@@ -70,6 +70,10 @@ function sidebarFor(admin?: object, user?: object, canConfigure = true) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   })
+  client.setQueryData(['enterprise', 1, 'workspace'], {
+    newapi_user_id: 1,
+    name: '',
+  })
   client.setQueryData(['status'], {
     SidebarModulesAdmin: admin ? JSON.stringify(admin) : '',
   })
@@ -94,85 +98,68 @@ function sidebarFor(admin?: object, user?: object, canConfigure = true) {
   return result
 }
 
-describe('security sidebar visibility', () => {
-  it('old configurations show Security & Access immediately after Profile and keep API Keys', () => {
-    const { result } = sidebarFor(
-      { personal: { enabled: true, personal: true, topup: true } },
-      { personal: { enabled: true, personal: true } }
-    )
-    expect(
-      result.current
-        .find((group) => group.id === 'personal')
-        ?.items.map((item) => item.title)
-    ).toEqual(['Wallet', 'Profile', 'Security & Access'])
+describe('flat console navigation and legacy visibility', () => {
+  it('groups all destinations into exactly three groups and nine flat links', () => {
+    const { result } = sidebarFor()
+    expect(result.current.map((group) => group.items.length)).toEqual([3, 3, 3])
     expect(
       result.current
         .flatMap((group) => group.items)
-        .some((item) => item.title === 'API Keys')
+        .every((item) => !!item.url && !item.items && !item.type)
     ).toBe(true)
-  })
-  it.each([
-    [{ personal: { enabled: true, security: false } }, undefined],
-    [{ personal: { enabled: false } }, { personal: { security: true } }],
-    [undefined, { personal: { enabled: true, security: false } }],
-    [undefined, { personal: { enabled: false } }],
-  ])(
-    'admin or user disablement hides Security & Access (%j, %j)',
-    (admin, user) => {
-      const { result } = sidebarFor(admin, user)
-      expect(
-        result.current
-          .flatMap((group) => group.items)
-          .some((item) => item.title === 'Security & Access')
-      ).toBe(false)
-    }
-  )
-  it('users without sidebar configuration permission retain the admin view', () => {
-    const { result } = sidebarFor(
-      undefined,
-      { personal: { security: false } },
-      false
+    const pages = result.current
+      .flatMap((group) => group.items)
+      .flatMap((item) => item.pages ?? [item])
+    expect(pages.map((page) => page.url)).toEqual(
+      expect.arrayContaining([
+        '/dashboard/overview',
+        '/dashboard/models',
+        '/dashboard/flow',
+        '/dashboard/users',
+        '/usage-logs/audit',
+        '/usage-logs/task',
+        '/usage-logs/drawing',
+        '/enterprise/employees',
+        '/enterprise/departments',
+        '/keys',
+        '/wallet',
+        '/channels',
+        '/models/deployments',
+        '/redemption-codes',
+        '/subscriptions',
+        '/task-plugins',
+        '/request-processing',
+        '/system-info',
+      ])
     )
-    expect(
-      result.current
-        .flatMap((group) => group.items)
-        .some((item) => item.title === 'Security & Access')
-    ).toBe(true)
   })
-})
 
-describe('audit log sidebar entry', () => {
-  it('admin settings default Audit Logs to visible and preserve its independent toggle when saved', () => {
+  it('legacy audit toggle remains independent after logs merge into one destination', () => {
     const config = parseSidebarModulesAdmin(
       '{"console":{"enabled":true,"log":true}}'
     )
     expect(config.console.audit).toBe(true)
     config.console.audit = false
-    const saved = parseSidebarModulesAdmin(serializeSidebarModulesAdmin(config))
-    const { result } = sidebarFor(saved)
-    const titles = result.current
+    const { result } = sidebarFor(
+      parseSidebarModulesAdmin(serializeSidebarModulesAdmin(config))
+    )
+    const logs = result.current
       .flatMap((group) => group.items)
-      .map((item) => item.title)
-    expect(titles).not.toContain('Audit Logs')
-    expect(titles).toContain('Usage Logs')
+      .find((item) => item.title === 'Logs & audit')
+    expect(logs?.pages?.map((page) => page.title)).not.toContain('Audit Logs')
+    expect(logs?.pages?.map((page) => page.title)).toContain('Usage Logs')
   })
 
-  it('legacy configurations show a separate Audit Logs link immediately after Usage Logs', () => {
-    const { result } = sidebarFor(
-      { console: { enabled: true, log: true } },
-      { console: { enabled: true, log: true } }
+  it('hiding usage logs picks an available audit route and preserves its selected state', () => {
+    const { result } = sidebarFor({ console: { enabled: true, log: false } })
+    const logs = result.current
+      .flatMap((group) => group.items)
+      .find((item) => item.title === 'Logs & audit')
+    expect(logs?.url).toBe('/usage-logs/audit')
+    expect(logs?.pages?.map((page) => page.title)).not.toContain('Usage Logs')
+    expect(logs && checkIsActive('/usage-logs/audit?filter=test', logs)).toBe(
+      true
     )
-    const items =
-      result.current.find((group) => group.id === 'general')?.items ?? []
-    const usageIndex = items.findIndex((item) => item.title === 'Usage Logs')
-    expect(items[usageIndex + 1]).toMatchObject({
-      title: 'Audit Logs',
-      url: '/usage-logs/audit',
-    })
-    const selected = items.filter((item) =>
-      checkIsActive('/usage-logs/audit', item)
-    )
-    expect(selected.map((item) => item.title)).toEqual(['Audit Logs'])
   })
 
   it.each([
@@ -181,24 +168,30 @@ describe('audit log sidebar entry', () => {
     [undefined, { console: { enabled: true, audit: false } }],
     [undefined, { console: { enabled: false } }],
   ])(
-    'admin and personal visibility rules can hide Audit Logs (%j, %j)',
+    'admin and user filters hide audit in page navigation (%j, %j)',
     (admin, user) => {
       const { result } = sidebarFor(admin, user)
       expect(
         result.current
           .flatMap((group) => group.items)
-          .some((item) => item.title === 'Audit Logs')
-      ).toBe(false)
+          .flatMap((item) => item.pages ?? [item])
+          .map((page) => page.url)
+      ).not.toContain('/usage-logs/audit')
     }
   )
 
-  it('hiding Usage Logs does not hide the independently configured Audit Logs entry', () => {
-    const { result } = sidebarFor({ console: { enabled: true, log: false } })
-    const titles = result.current
-      .flatMap((group) => group.items)
-      .map((item) => item.title)
-    expect(titles).not.toContain('Usage Logs')
-    expect(titles).toContain('Audit Logs')
+  it('users without sidebar configuration permission retain all administrator-enabled pages', () => {
+    const { result } = sidebarFor(
+      undefined,
+      { console: { token: false } },
+      false
+    )
+    expect(
+      result.current
+        .flatMap((group) => group.items)
+        .flatMap((item) => item.pages ?? [item])
+        .map((page) => page.url)
+    ).toContain('/keys')
   })
 })
 
@@ -217,7 +210,7 @@ describe('model pricing badge', () => {
     const { navGroups } = useSidebarView()
     const entries = navGroups
       .flatMap((group) => group.items)
-      .flatMap((item) => [item, ...(item.items ?? [])])
+      .flatMap((item) => [item])
       .filter((item) => item.badge)
     return (
       <ul aria-label='Badged entries'>
@@ -236,7 +229,10 @@ describe('model pricing badge', () => {
     const get = vi.spyOn(api, 'get').mockImplementation(async (url) => ({
       data: {
         success: true,
-        data: url === '/api/option/model_pricing/issues' ? issues() : {},
+        data:
+          url === '/api/option/model_pricing/issues'
+            ? issues()
+            : { newapi_user_id: 1, name: '' },
       },
     }))
     const client = new QueryClient({
@@ -274,14 +270,13 @@ describe('model pricing badge', () => {
     expect(badgedEntries()).toHaveLength(1)
   })
 
-  it('inside System Settings shows the count on Billing & Payment and Model Pricing', async () => {
+  it('inside System Settings retains the same root entry and pricing badge', async () => {
     await renderSidebar('/system-settings/site', ROLE.SUPER_ADMIN, () => [
       issue('kling-v3', 'kling'),
     ])
 
-    expect(await screen.findByText('Model Pricing: 1')).toBeInTheDocument()
-    expect(screen.getByText('Billing & Payment: 1')).toBeInTheDocument()
-    expect(badgedEntries()).toHaveLength(2)
+    expect(await screen.findByText('System Settings: 1')).toBeInTheDocument()
+    expect(badgedEntries()).toHaveLength(1)
   })
 
   it('follows plugin changes and saved prices without a page reload', async () => {

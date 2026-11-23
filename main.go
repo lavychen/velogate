@@ -379,6 +379,10 @@ func InitResources() error {
 		return err
 	}
 
+	if err = model.InitEnterpriseDB(); err != nil {
+		return err
+	}
+
 	// Initialize Redis
 	err = common.InitRedisClient()
 	if err != nil {

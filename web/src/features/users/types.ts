@@ -63,7 +63,9 @@ export const userSchema = z.object({
     .record(z.string(), z.record(z.string(), z.boolean()))
     .optional(),
 })
-export type User = z.infer<typeof userSchema>
+export type User = z.infer<typeof userSchema> & {
+  enterprise_workspace?: string
+}
 
 export const userListSchema = z.array(userSchema)
 

@@ -22,6 +22,7 @@ import { useMemo, useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
+import { Button } from '@/components/ui/button'
 import {
   Collapsible,
   CollapsibleContent,
@@ -158,7 +159,13 @@ function DropdownPresetItem({
 /**
  * Dynamic chat presets navigation item
  */
-export function ChatPresetsItem({ item }: { item: NavChatPresets }) {
+export function ChatPresetsItem({
+  item,
+  presentation = 'sidebar',
+}: {
+  item: NavChatPresets
+  presentation?: 'sidebar' | 'toolbar'
+}) {
   const { t } = useTranslation()
   const { chatPresets, serverAddress } = useChatPresets()
   const { state, isMobile, setOpenMobile } = useSidebar()
@@ -227,6 +234,29 @@ export function ChatPresetsItem({ item }: { item: NavChatPresets }) {
   // Don't render if no visible presets
   if (visiblePresets.length === 0) {
     return null
+  }
+
+  if (presentation === 'toolbar') {
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          render={<Button variant='ghost' size='sm' className='shrink-0' />}
+        >
+          {item.icon && <item.icon aria-hidden='true' />}
+          {item.title}
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align='start'>
+          {visiblePresets.map((preset) => (
+            <DropdownPresetItem
+              key={preset.id}
+              preset={preset}
+              loading={loadingPresetId === preset.id}
+              onOpen={handleOpenExternal}
+            />
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    )
   }
 
   // Collapsed state on non-mobile - render dropdown menu

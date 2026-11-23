@@ -97,6 +97,8 @@ const mergeWithDefaultSidebarModules = (
  * Mapping from URL to configuration keys
  */
 const URL_TO_CONFIG_MAP: Record<string, { section: string; module: string }> = {
+  '/chat': { section: 'chat', module: 'chat' },
+  '/chat2link': { section: 'chat', module: 'chat' },
   '/playground': { section: 'chat', module: 'playground' },
   '/dashboard': { section: 'console', module: 'detail' },
   '/dashboard/overview': { section: 'console', module: 'detail' },
@@ -114,6 +116,7 @@ const URL_TO_CONFIG_MAP: Record<string, { section: string; module: string }> = {
   '/channels': { section: 'admin', module: 'channel' },
   '/models': { section: 'admin', module: 'models' },
   '/models/metadata': { section: 'admin', module: 'models' },
+  '/models/vendors': { section: 'admin', module: 'models' },
   '/models/deployments': { section: 'admin', module: 'models' },
   '/users': { section: 'admin', module: 'user' },
   '/redemption-codes': { section: 'admin', module: 'redemption' },
@@ -174,7 +177,11 @@ function isModuleEnabled(
   adminConfig: SidebarModulesAdminConfig,
   userConfig: SidebarModulesUserConfig
 ): boolean {
-  const mapping = URL_TO_CONFIG_MAP[url]
+  const mapping =
+    URL_TO_CONFIG_MAP[url] ??
+    (url.startsWith('/system-settings/')
+      ? URL_TO_CONFIG_MAP['/system-settings']
+      : undefined)
   if (!mapping) {
     // No mapping config, default to visible (e.g. system settings and new features)
     return true
@@ -215,6 +222,8 @@ function isNavItemVisible(
     return userChat.chat !== false
   }
 
+  if (item.pages) return item.pages.length > 0
+
   // Handle direct link type
   if ('url' in item && item.url) {
     const configUrls = item.configUrls ?? [item.url]
@@ -244,6 +253,19 @@ function filterNavItems(
 ): NavItem[] {
   return items
     .map((item) => {
+      if (item.pages && item.url) {
+        const pages = item.pages.filter((page) =>
+          isModuleEnabled(page.url as string, adminConfig, userConfig)
+        )
+        return {
+          ...item,
+          pages,
+          url:
+            pages.find((page) => page.url === item.url)?.url ??
+            pages[0]?.url ??
+            item.url,
+        }
+      }
       // If collapsible item, also filter its sub-items
       if ('items' in item && item.items) {
         const filteredSubItems = item.items.filter((subItem) =>

@@ -33,6 +33,7 @@ func (input *tokenAutoGroupsInput) UnmarshalJSON(data []byte) error {
 }
 
 type tokenRequest struct {
+	service.EnterpriseAssignmentInput
 	model.Token
 	AutoGroups tokenAutoGroupsInput `json:"auto_groups"`
 	// 指针区分“未传”和显式 false：新建时未传即开启，更新时未传则保留原值。
@@ -310,6 +311,10 @@ func AddToken(c *gin.Context) {
 	}
 	params := tokenAuditParams(c)
 	params["name"] = token.Name
+	if request.AssignmentType != "" && c.GetBool("use_access_token") && !c.GetBool("access_token_legacy") && !service.AccessTokenScopeGranted(c.GetStringSlice("access_token_scopes"), "enterprise:write") {
+		common.ApiErrorStatus(c, http.StatusForbidden, common.NewMessage("The access token lacks the required permission: {{scope}}", map[string]any{"scope": "enterprise:write"}))
+		return
+	}
 	// 非无限额度时，检查额度值是否超出有效范围
 	if !token.UnlimitedQuota {
 		if token.RemainQuota < 0 {
@@ -363,18 +368,48 @@ func AddToken(c *gin.Context) {
 		CrossGroupRetry:    token.CrossGroupRetry,
 		AutoGroups:         token.AutoGroups,
 	}
+	if request.AssignmentType != "" {
+		cleanToken.Key = "vg-" + key
+		cleanToken.Status = common.TokenStatusDisabled
+	}
 	cleanToken.AllowUserQuotaQuery = request.AllowUserQuotaQuery == nil || *request.AllowUserQuotaQuery
 	err = cleanToken.Insert()
 	if err != nil {
 		common.ApiError(c, err)
 		return
 	}
+
+	if request.AssignmentType != "" {
+		_, err = service.AssignEnterpriseToken(cleanToken.UserId, cleanToken.Id, request.EnterpriseAssignmentInput)
+		if err != nil {
+			if cleanupErr := cleanToken.Delete(); cleanupErr != nil {
+				common.SysError("failed to remove unassigned enterprise token")
+			}
+			common.ApiError(c, err)
+			return
+		}
+		// The key is inactive until both databases contain its assignment. A
+		// compensation failure can never leave a rejected credential usable.
+		cleanToken.Status = common.TokenStatusEnabled
+		if err := cleanToken.SelectUpdate(); err != nil {
+			if cleanupErr := service.UnassignEnterpriseToken(cleanToken.UserId, cleanToken.Id); cleanupErr != nil {
+				common.SysError("failed to close rejected enterprise token assignment")
+			}
+			if cleanupErr := cleanToken.Delete(); cleanupErr != nil {
+				common.SysError("failed to remove inactive enterprise token")
+			}
+			common.ApiError(c, err)
+			return
+		}
+	}
 	params["id"] = cleanToken.Id
 	common.SetContextKey(c, constant.ContextKeyTokenAuditSucceeded, true)
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "",
-	})
+	response := gin.H{"success": true, "message": "", "data": buildMaskedTokenResponse(&cleanToken)}
+	if request.AssignmentType != "" && (!c.GetBool("use_access_token") || c.GetBool("access_token_legacy") || service.AccessTokenScopeGranted(c.GetStringSlice("access_token_scopes"), "api_key:reveal")) {
+		response["created_key"] = "sk-" + cleanToken.GetFullKey()
+	}
+	c.Header("Cache-Control", "no-store")
+	c.JSON(http.StatusOK, response)
 }
 
 func DeleteToken(c *gin.Context) {

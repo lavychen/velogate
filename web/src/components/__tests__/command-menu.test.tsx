@@ -35,7 +35,12 @@ import { useAuthStore } from '@/stores/auth-store'
 import { CommandMenu } from '../command-menu'
 import { Search } from '../search'
 
-const adminEntries = ['Channels', 'Models', 'Users', 'Redemption Codes']
+const adminEntries = [
+  'Channels',
+  'Models',
+  'User management',
+  'Redemption Codes',
+]
 const superAdminEntries = [
   'System Info',
   'Plugins',
@@ -77,6 +82,10 @@ async function searchEntriesFor(role: number, sidebarModulesAdmin = '') {
   useAuthStore.getState().auth.setUser({ id: 1, username: 'alice', role })
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false } },
+  })
+  client.setQueryData(['enterprise', 1, 'workspace'], {
+    newapi_user_id: 1,
+    name: '',
   })
   client.setQueryData(STATUS_QUERY_KEY, {
     SidebarModulesAdmin: sidebarModulesAdmin,

@@ -76,11 +76,18 @@ describe('index.html theme boot script', () => {
     expect(document.documentElement).not.toHaveClass('dark')
   })
 
-  it('follows the system dark mode when no preference is saved', () => {
+  it('defaults to light mode when no preference is saved', () => {
     mockSystemDarkMode(true)
 
     runBootScript()
 
+    expect(document.documentElement).toHaveClass('light')
+  })
+
+  it('follows system dark mode when explicitly selected', () => {
+    mockSystemDarkMode(true)
+    localStorage.setItem(THEME_STORAGE_KEYS.mode, 'system')
+    runBootScript()
     expect(document.documentElement).toHaveClass('dark')
   })
 

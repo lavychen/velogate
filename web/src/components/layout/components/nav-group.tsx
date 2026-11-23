@@ -60,7 +60,7 @@ import { ChatPresetsItem } from './chat-presets-item'
  * Sidebar navigation group component
  * Renders a group of navigation items, supporting regular links and collapsible submenus
  */
-export function NavGroup({ title, items }: NavGroupProps) {
+export function NavGroup({ title, subtitle, items }: NavGroupProps) {
   const { state, isMobile } = useSidebar()
   const href = useLocation({ select: (location) => location.href })
 
@@ -69,6 +69,17 @@ export function NavGroup({ title, items }: NavGroupProps) {
       <SidebarGroupLabel className='text-muted-foreground/70 px-2 text-[11px] font-medium tracking-wider uppercase'>
         {title}
       </SidebarGroupLabel>
+      {subtitle && (
+        <div className='bg-muted/70 text-muted-foreground mx-2 mb-2 flex min-w-0 items-center gap-2 rounded-md border px-2 py-1.5 text-[11px] group-data-[collapsible=icon]:hidden'>
+          <span
+            className='size-1.5 shrink-0 rounded-full bg-orange-500'
+            aria-hidden='true'
+          />
+          <span className='truncate' title={subtitle}>
+            {subtitle}
+          </span>
+        </div>
+      )}
       <SidebarMenu>
         {items.map((item) => {
           const key = `${item.title}-${item.url || item.type}`
@@ -130,6 +141,7 @@ function SidebarMenuLink({ item, href }: { item: NavLink; href: string }) {
         render={
           <Link
             to={item.url}
+            aria-current={checkIsActive(href, item) ? 'page' : undefined}
             preload={isMobile ? false : undefined}
             onClick={() => setOpenMobile(false)}
           />

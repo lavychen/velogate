@@ -62,6 +62,7 @@ import {
 } from '@/components/ui/sheet'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
+import type { AssignmentInput } from '@/features/enterprise/api-types'
 import { RelatedPolicyLink } from '@/features/system-settings/request-policies/related-policy-link'
 import { useStatus } from '@/hooks/use-status'
 import { getUserModels, getUserGroups } from '@/lib/api'
@@ -99,12 +100,16 @@ type ApiKeyMutateDrawerProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   currentRow?: ApiKey
+  assignment?: AssignmentInput
+  onCreated?: (key: string) => void
 }
 
 export function ApiKeysMutateDrawer({
   open,
   onOpenChange,
   currentRow,
+  assignment,
+  onCreated,
 }: ApiKeyMutateDrawerProps) {
   const { t } = useTranslation()
   const isUpdate = !!currentRow
@@ -306,18 +311,20 @@ export function ApiKeysMutateDrawer({
         }
       } else {
         // Create mode - handle batch creation
-        const count = data.tokenCount || 1
+        const count = assignment ? 1 : data.tokenCount || 1
         let successCount = 0
 
         for (let i = 0; i < count; i++) {
           const result = await createApiKey({
             ...basePayload,
+            ...assignment,
             name:
               i === 0 && data.name
                 ? data.name
                 : `${data.name || 'default'}-${Math.random().toString(36).slice(2, 8)}`,
           })
           if (result.success) {
+            if (result.created_key) onCreated?.(result.created_key)
             successCount++
           } else {
             handleServerError(result, t(ERROR_MESSAGES.CREATE_FAILED))
@@ -331,7 +338,7 @@ export function ApiKeysMutateDrawer({
               count: successCount,
             })
           )
-          onOpenChange(false)
+          if (!assignment) onOpenChange(false)
           triggerRefresh()
         }
       }
@@ -572,7 +579,7 @@ export function ApiKeysMutateDrawer({
                 )}
               />
 
-              {!isUpdate && (
+              {!isUpdate && !assignment && (
                 <FormField
                   control={form.control}
                   name='tokenCount'

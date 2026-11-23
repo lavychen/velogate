@@ -17,6 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { Link } from '@tanstack/react-router'
+import { Flame } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import {
@@ -92,6 +93,10 @@ export function SystemBrand(props: SystemBrandProps) {
               className='size-full rounded-lg object-cover'
             />
           </div>
+          <Flame
+            className='size-4 shrink-0 text-orange-500 group-data-[collapsible=icon]:hidden'
+            aria-hidden='true'
+          />
           <div className='grid flex-1 text-start text-sm leading-tight group-data-[collapsible=icon]:hidden'>
             <span className='truncate font-semibold'>{name}</span>
             <span className='truncate text-xs'>{version}</span>

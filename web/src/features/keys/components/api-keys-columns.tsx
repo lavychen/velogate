@@ -23,6 +23,7 @@ import { useTranslation } from 'react-i18next'
 
 import { StatusBadge } from '@/components/status-badge'
 import { Checkbox } from '@/components/ui/checkbox'
+import { KeyOwnershipCell } from '@/features/enterprise/components/key-ownership-cell'
 import { useMediaQuery } from '@/hooks'
 import { toIntlLocale } from '@/i18n/languages'
 import { getUserGroups } from '@/lib/api'
@@ -102,6 +103,12 @@ export function useApiKeysColumns(now: number): ColumnDef<ApiKey>[] {
         enableSorting: false,
         enableHiding: false,
         size: 40,
+      },
+      {
+        id: 'ownership',
+        header: t('Ownership'),
+        cell: ({ row }) => <KeyOwnershipCell tokenId={row.original.id} />,
+        size: 180,
       },
       {
         accessorKey: 'name',

@@ -16,19 +16,25 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
+import { Plus } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
+
 import { ConfigDrawer } from '@/components/config-drawer'
 import { LanguageSwitcher } from '@/components/language-switcher'
 import { NotificationPopover } from '@/components/notification-popover'
 import { ProfileDropdown } from '@/components/profile-dropdown'
 import { Search } from '@/components/search'
+import { ThemeSwitch } from '@/components/theme-switch'
+import { Button } from '@/components/ui/button'
+import { useKeyDialogStore } from '@/features/enterprise/key-dialog-store'
 import { SystemUpdateAction } from '@/features/system-update/system-update-action'
 import { useNotifications } from '@/hooks/use-notifications'
 import { useTopNavLinks } from '@/hooks/use-top-nav-links'
 
 import { defaultTopNavLinks } from '../config/top-nav.config'
 import type { TopNavLink } from '../types'
+import { ConsoleBreadcrumb } from './console-breadcrumb'
 import { Header } from './header'
-import { SystemBrand } from './system-brand'
 import { TopNav } from './top-nav'
 
 /**
@@ -104,6 +110,8 @@ export function AppHeader({
   showConfigDrawer = true,
   showProfileDropdown = true,
 }: AppHeaderProps) {
+  const { t } = useTranslation()
+  const showKeyDialog = useKeyDialogStore((state) => state.show)
   // Prioritize dynamically generated links from backend
   const dynamicLinks = useTopNavLinks()
   const links = dynamicLinks.length > 0 ? dynamicLinks : navLinks
@@ -112,10 +120,12 @@ export function AppHeader({
   const notifications = useNotifications()
 
   return (
-    <Header>
+    <Header className='bg-card/95 h-15 border-b backdrop-blur-md'>
       <div className='@container/system-brand flex min-w-0 flex-1 items-center gap-1'>
-        <SystemBrand variant='inline' />
-        <SystemUpdateAction presentation='version' />
+        <ConsoleBreadcrumb />
+        <div className='hidden xl:block'>
+          <SystemUpdateAction presentation='version' />
+        </div>
       </div>
 
       {leftContent ? (
@@ -125,8 +135,8 @@ export function AppHeader({
       {rightContent ?? (
         <div className='ms-auto flex shrink-0 items-center gap-1 sm:gap-2'>
           {showTopNav && (
-            <div className='me-1 hidden lg:block'>
-              <TopNav links={links} />
+            <div className='me-1'>
+              <TopNav links={links} presentation='dropdown' />
             </div>
           )}
           {showSearch && (
@@ -145,6 +155,15 @@ export function AppHeader({
             />
           )}
           <LanguageSwitcher />
+          <ThemeSwitch />
+          <Button
+            size='sm'
+            onClick={() => showKeyDialog()}
+            aria-label={t('Assign Key')}
+          >
+            <Plus aria-hidden='true' />
+            <span className='hidden sm:inline'>{t('Assign Key')}</span>
+          </Button>
           {showConfigDrawer && <ConfigDrawer />}
           {showProfileDropdown && <ProfileDropdown />}
         </div>

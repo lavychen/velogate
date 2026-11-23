@@ -18,172 +18,177 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import {
   Activity,
-  Box,
-  ClipboardList,
-  CreditCard,
-  FileText,
-  FlaskConical,
-  Key,
-  LayoutDashboard,
-  ListTodo,
-  MessageSquare,
-  PlugZap,
-  Radio,
-  ServerCog,
+  Building2,
+  KeyRound,
+  Network,
+  ScrollText,
   Settings,
-  ShieldCheck,
-  Ticket,
-  User,
+  Sparkles,
   Users,
   Wallet,
-  Workflow,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
-import type { SidebarBadges, SidebarData } from '@/components/layout/types'
+import { SYSTEM_SETTINGS_VIEW } from '@/components/layout/config/system-settings.config'
+import type {
+  NavLink,
+  SidebarBadges,
+  SidebarData,
+} from '@/components/layout/types'
+import { useWorkspace } from '@/features/enterprise/hooks/use-enterprise'
 import { ROLE } from '@/lib/roles'
 
-/**
- * Root navigation groups for the application sidebar.
- *
- * These are shown when the URL does not match any nested sidebar view
- * registered in `layout/lib/sidebar-view-registry.ts`.
- */
+/** Nine flat destinations; related features remain accessible as page navigation. */
 export function useSidebarData(badges: SidebarBadges = {}): SidebarData {
   const { t } = useTranslation()
+  const workspace = useWorkspace()
+  const settingsPages: NavLink[] = SYSTEM_SETTINGS_VIEW.getNavGroups(t, badges)
+    .flatMap((group) => group.items)
+    .flatMap((item) =>
+      (item.items ?? []).map((page) => ({
+        ...page,
+        section: item.title,
+        requiredRole: ROLE.SUPER_ADMIN,
+      }))
+    )
 
   return {
     navGroups: [
       {
-        id: 'chat',
-        title: t('Chat'),
+        id: 'workbench',
+        title: t('Workbench'),
         items: [
           {
-            title: t('Playground'),
-            url: '/playground',
-            icon: FlaskConical,
-          },
-          {
-            title: t('Chat'),
-            icon: MessageSquare,
-            type: 'chat-presets',
-          },
-        ],
-      },
-      {
-        id: 'general',
-        title: t('General'),
-        items: [
-          {
-            title: t('Overview'),
+            title: t('Overview & usage'),
             url: '/dashboard/overview',
             icon: Activity,
+            pages: [
+              { title: t('Overview'), url: '/dashboard/overview' },
+              { title: t('Model Call Analytics'), url: '/dashboard/models' },
+              { title: t('Flow'), url: '/dashboard/flow' },
+              {
+                title: t('User Analytics'),
+                url: '/dashboard/users',
+                requiredRole: ROLE.ADMIN,
+              },
+              { title: t('Enterprise usage'), url: '/enterprise/analytics' },
+            ],
           },
           {
-            title: t('Dashboard'),
-            url: '/dashboard/models',
-            icon: LayoutDashboard,
+            title: t('AI workbench'),
+            url: '/playground',
+            icon: Sparkles,
+            activeUrls: ['/chat', '/chat2link'],
+            pages: [
+              { title: t('Playground'), url: '/playground' },
+              { title: t('Chat'), url: '/chat2link' },
+            ],
           },
           {
-            title: t('API Keys'),
-            url: '/keys',
-            icon: Key,
-          },
-          {
-            title: t('Usage Logs'),
+            title: t('Logs & audit'),
             url: '/usage-logs/common',
-            icon: FileText,
-          },
-          {
-            title: t('Audit Logs'),
-            url: '/usage-logs/audit',
-            icon: ClipboardList,
-          },
-          {
-            title: t('Task Logs'),
-            url: '/usage-logs/task',
-            activeUrls: ['/usage-logs/drawing'],
-            configUrls: ['/usage-logs/drawing', '/usage-logs/task'],
-            icon: ListTodo,
+            icon: ScrollText,
+            pages: [
+              { title: t('Usage Logs'), url: '/usage-logs/common' },
+              { title: t('Audit Logs'), url: '/usage-logs/audit' },
+              { title: t('Task Logs'), url: '/usage-logs/task' },
+              { title: t('Drawing Logs'), url: '/usage-logs/drawing' },
+            ],
           },
         ],
       },
       {
-        id: 'personal',
-        title: t('Personal'),
+        id: 'enterprise',
+        title: t('Enterprise management'),
+        subtitle: workspace.data?.name || t('Enterprise workspace'),
         items: [
           {
-            title: t('Wallet'),
+            title: t('Organization & members'),
+            url: '/enterprise/employees',
+            icon: Building2,
+            pages: [
+              {
+                title: t('Employees'),
+                url: '/enterprise/employees',
+                activeUrls: ['/enterprise/members'],
+              },
+              { title: t('Departments'), url: '/enterprise/departments' },
+            ],
+          },
+          {
+            title: t('Key management'),
+            url: '/keys',
+            icon: KeyRound,
+            pages: [
+              { title: t('API Keys'), url: '/keys' },
+              { title: t('Enterprise keys'), url: '/enterprise/keys' },
+            ],
+          },
+          {
+            title: t('Wallet & billing'),
             url: '/wallet',
             icon: Wallet,
-          },
-          {
-            title: t('Profile'),
-            url: '/profile',
-            icon: User,
-          },
-          {
-            title: t('Security & Access'),
-            url: '/security',
-            icon: ShieldCheck,
+            pages: [
+              { title: t('Wallet'), url: '/wallet' },
+              {
+                title: t('Redemption Codes'),
+                url: '/redemption-codes',
+                requiredRole: ROLE.ADMIN,
+              },
+              {
+                title: t('Subscriptions'),
+                url: '/subscriptions',
+                requiredRole: ROLE.ADMIN,
+              },
+            ],
           },
         ],
       },
       {
         id: 'admin',
-        title: t('Admin'),
+        title: t('Platform management'),
+        subtitle: 'Admin',
         items: [
+          { title: t('User management'), url: '/users', icon: Users },
           {
-            title: t('Channels'),
+            title: t('Channels & models'),
             url: '/channels',
-            icon: Radio,
-          },
-          {
-            title: t('Models'),
-            url: '/models/metadata',
-            icon: Box,
-          },
-          {
-            title: t('Users'),
-            url: '/users',
-            icon: Users,
-          },
-          {
-            title: t('Redemption Codes'),
-            url: '/redemption-codes',
-            icon: Ticket,
-          },
-          {
-            title: t('Subscriptions'),
-            url: '/subscriptions',
-            icon: CreditCard,
-          },
-          {
-            title: t('System Info'),
-            url: '/system-info',
-            icon: ServerCog,
-            requiredRole: ROLE.SUPER_ADMIN,
-          },
-          {
-            title: t('Plugins'),
-            url: '/task-plugins',
-            icon: PlugZap,
-            requiredRole: ROLE.SUPER_ADMIN,
-          },
-          {
-            title: t('Request processing'),
-            url: '/request-processing',
-            icon: Workflow,
-            requiredRole: ROLE.SUPER_ADMIN,
+            icon: Network,
+            pages: [
+              { title: t('Channels'), url: '/channels' },
+              { title: t('Models'), url: '/models/metadata' },
+              { title: t('Vendors'), url: '/models/vendors' },
+              { title: t('Deployments'), url: '/models/deployments' },
+            ],
           },
           {
             title: t('System Settings'),
-            url: '/system-settings/site',
-            activeUrls: ['/system-settings'],
+            url: '/system-settings/site/system-info',
             icon: Settings,
             requiredRole: ROLE.SUPER_ADMIN,
-            // Model pricing lives in System Settings.
             badge: badges.modelPricing,
+            activeUrls: ['/system-settings'],
+            pages: [
+              ...settingsPages,
+              {
+                title: t('System Info'),
+                url: '/system-info',
+                section: t('Operations'),
+                requiredRole: ROLE.SUPER_ADMIN,
+              },
+              {
+                title: t('Plugins'),
+                url: '/task-plugins',
+                section: t('Operations'),
+                requiredRole: ROLE.SUPER_ADMIN,
+              },
+              {
+                title: t('Request processing'),
+                url: '/request-processing',
+                section: t('Operations'),
+                requiredRole: ROLE.SUPER_ADMIN,
+              },
+            ],
           },
         ],
       },

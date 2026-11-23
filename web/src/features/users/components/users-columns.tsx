@@ -44,6 +44,7 @@ import {
 } from '../constants'
 import type { User } from '../types'
 import { DataTableRowActions } from './data-table-row-actions'
+import { UserEnterpriseCell } from './user-enterprise-cell'
 import { UserQuotaCell } from './user-quota-cell'
 
 export function useUsersColumns(): ColumnDef<User>[] {
@@ -77,6 +78,18 @@ export function useUsersColumns(): ColumnDef<User>[] {
         enableSorting: false,
         enableHiding: false,
         size: 40,
+      },
+      {
+        id: 'enterprise',
+        header: t('Enterprise workspace'),
+        cell: ({ row }) => (
+          <UserEnterpriseCell
+            user={row.original}
+            workspace={row.original.enterprise_workspace}
+          />
+        ),
+        enableSorting: false,
+        size: 190,
       },
       {
         accessorKey: 'id',

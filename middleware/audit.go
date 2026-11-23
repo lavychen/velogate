@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"bytes"
+	"net/http"
 	"strconv"
 
 	"github.com/QuantumNous/new-api/common"
@@ -316,4 +317,22 @@ func finishAccessTokenAudit(c *gin.Context) {
 	audit.entry.Status = audit.writer.Status()
 	audit.entry.Success = auditResponseSuccess(audit.entry.Status, audit.writer.body.Bytes())
 	model.RecordAuditLog(c, audit.entry)
+}
+
+// EnterpriseOperationAudit records non-secret routing context, never request
+// bodies, key material, or employee personal information.
+func EnterpriseOperationAudit() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if c.Request.Method == http.MethodGet {
+			c.Next()
+			return
+		}
+		entry := model.AuditLog{UserId: c.GetInt("id"), Username: c.GetString("username"), ActorRole: c.GetInt("role"), Category: model.AuditCategoryOperation, Action: "enterprise.change", Content: "Enterprise organization update", Other: model.AuditOther{Op: &model.AuditOperation{Action: "enterprise.change", Params: model.AuditFields{"method": c.Request.Method, "route": c.FullPath(), "id": c.Param("id"), "token_id": c.Param("token_id")}}}}
+		writer := &auditResponseWriter{ResponseWriter: c.Writer, body: bytes.NewBuffer(nil), maxSize: 64 * 1024}
+		c.Writer = writer
+		c.Next()
+		entry.Status = writer.Status()
+		entry.Success = auditResponseSuccess(entry.Status, writer.body.Bytes())
+		model.RecordAuditLog(c, entry)
+	}
 }

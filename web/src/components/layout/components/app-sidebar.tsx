@@ -1,3 +1,4 @@
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -16,45 +17,44 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
+import { useTranslation } from 'react-i18next'
 
-import { Sidebar, SidebarContent, SidebarRail } from '@/components/ui/sidebar'
+import { ProfileDropdown } from '@/components/profile-dropdown'
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarHeader,
+  SidebarRail,
+} from '@/components/ui/sidebar'
 import { useLayout } from '@/context/layout-provider'
 import { useSidebarView } from '@/hooks/use-sidebar-view'
+import { useUserDisplay } from '@/hooks/use-user-display'
 import { MOTION_TRANSITION, MOTION_VARIANTS } from '@/lib/motion'
+import { useAuthStore } from '@/stores/auth-store'
 
 import { NavGroup } from './nav-group'
-import { SidebarViewHeader } from './sidebar-view-header'
+import { SystemBrand } from './system-brand'
 
-/**
- * Application sidebar.
- *
- * Adopts the Vercel / Cloudflare "drill-in" pattern: the URL drives
- * which sidebar *view* is rendered. Clicking a top-level entry like
- * `System Settings` swaps the sidebar to a contextual workspace —
- * with a `← Back to Dashboard` affordance — instead of stacking the
- * sub-navigation inside the root tree.
- *
- * Architecture:
- *   - View resolution + filtering: {@link useSidebarView}
- *   - View registry: `layout/lib/sidebar-view-registry.ts`
- *   - Per-view header: {@link SidebarViewHeader}
- *
- * Adding a new nested view only requires registering a {@link SidebarView}
- * in the registry; this component requires no changes.
- */
+/** Persistent, flat console navigation on every page. */
 export function AppSidebar() {
+  const { t } = useTranslation()
   const { collapsible, variant } = useLayout()
-  const { key, view, navGroups } = useSidebarView()
+  const { key, navGroups } = useSidebarView()
   const shouldReduce = useReducedMotion()
+  const user = useAuthStore((s) => s.auth.user)
+  const { displayName, roleLabel } = useUserDisplay(user)
 
   return (
     <Sidebar collapsible={collapsible} variant={variant}>
-      {view && <SidebarViewHeader view={view} />}
+      <SidebarHeader className='h-15 justify-center border-b px-3 group-data-[collapsible=icon]:px-1'>
+        <SystemBrand />
+      </SidebarHeader>
 
-      <SidebarContent className='py-2'>
+      <SidebarContent className='px-1 py-4 [&>div]:gap-5'>
         <AnimatePresence mode='wait' initial={false}>
-          <motion.div
+          <motion.nav
+            aria-label={t('Main navigation')}
             key={key}
             initial={
               shouldReduce ? false : MOTION_VARIANTS.sidebarSlide.initial
@@ -67,9 +67,21 @@ export function AppSidebar() {
             {navGroups.map((props) => (
               <NavGroup key={props.id || props.title} {...props} />
             ))}
-          </motion.div>
+          </motion.nav>
         </AnimatePresence>
       </SidebarContent>
+
+      <SidebarFooter className='border-t p-4 group-data-[collapsible=icon]:p-2.5'>
+        <div className='flex min-w-0 items-center gap-3'>
+          <ProfileDropdown />
+          <div className='min-w-0 group-data-[collapsible=icon]:hidden'>
+            <p className='truncate text-sm font-semibold'>{displayName}</p>
+            <p className='text-muted-foreground truncate text-xs'>
+              {roleLabel}
+            </p>
+          </div>
+        </div>
+      </SidebarFooter>
 
       <SidebarRail />
     </Sidebar>

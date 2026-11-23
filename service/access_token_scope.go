@@ -57,6 +57,10 @@ var accessTokenStaticResources = []AccessTokenResource{
 		accessTokenView("View your profile, groups, and available models."),
 		accessTokenEdit("Change your display name and personal settings."),
 	}},
+	{Resource: "enterprise", LabelKey: "Enterprise management", group: AccessTokenGroupPersonal, minRole: common.RoleCommonUser, Actions: []authz.ActionDefinition{
+		accessTokenView("View enterprise departments, employees and usage."),
+		accessTokenEdit("Manage enterprise departments, employees and key assignments."),
+	}},
 	{Resource: "api_key", LabelKey: "API keys", group: AccessTokenGroupPersonal, minRole: common.RoleCommonUser, Actions: []authz.ActionDefinition{
 		accessTokenView("View API keys and their settings without the full key."),
 		accessTokenEdit("Create, edit, and delete API keys."),

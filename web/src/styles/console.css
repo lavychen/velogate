@@ -1,0 +1,109 @@
+/*
+Copyright (C) 2023-2026 QuantumNous
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as
+published by the Free Software Foundation, either version 3 of the
+License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+For commercial licensing, please contact support@quantumnous.com
+*/
+
+/* Authenticated surfaces and portal content share the V2 palette. */
+:root:has(.console-shell) {
+  --background: #f6f7f9;
+  --foreground: #0f172a;
+  --card: #ffffff;
+  --card-foreground: #0f172a;
+  --popover: #ffffff;
+  --popover-foreground: #0f172a;
+  --primary: #4f46e5;
+  --primary-foreground: #ffffff;
+  --secondary: #f1f3f6;
+  --secondary-foreground: #334155;
+  --muted: #f1f3f6;
+  --muted-foreground: #64748b;
+  --accent: #eef2ff;
+  --accent-foreground: #4338ca;
+  --border: #e6e8ec;
+  --input: #e2e5ec;
+  --ring: #6366f1;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #334155;
+  --sidebar-primary: #4f46e5;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #eef2ff;
+  --sidebar-accent-foreground: #4338ca;
+  --sidebar-border: #e6e8ec;
+  --sidebar-ring: #6366f1;
+  font-variant-numeric: tabular-nums;
+}
+:root.dark:has(.console-shell) {
+  --background: #090a0f;
+  --foreground: #f1f5f9;
+  --card: #11131a;
+  --card-foreground: #f1f5f9;
+  --popover: #131620;
+  --popover-foreground: #f1f5f9;
+  --primary: #818cf8;
+  --primary-foreground: #090a0f;
+  --secondary: #1b1e29;
+  --secondary-foreground: #e2e8f0;
+  --muted: #1b1e29;
+  --muted-foreground: #94a3b8;
+  --accent: #20233c;
+  --accent-foreground: #c7d2fe;
+  --border: #252832;
+  --input: #303440;
+  --ring: #818cf8;
+  --sidebar: #0e1017;
+  --sidebar-foreground: #cbd5e1;
+  --sidebar-primary: #818cf8;
+  --sidebar-primary-foreground: #090a0f;
+  --sidebar-accent: #20233c;
+  --sidebar-accent-foreground: #c7d2fe;
+  --sidebar-border: #252832;
+}
+.console-shell { background: var(--background); }
+.console-shell [data-slot='sidebar-inset'] { background: transparent; }
+.console-shell [data-slot='sidebar-menu-button'] {
+  height: 2.375rem;
+  border-radius: .5rem;
+  color: var(--muted-foreground);
+  font-size: .8125rem;
+}
+.console-shell [data-slot='sidebar-menu-button'][data-active='true'] {
+  background: var(--sidebar-accent);
+  color: var(--sidebar-accent-foreground);
+  box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--primary) 12%, transparent);
+}
+.console-shell [data-slot='sidebar-group-label'] {
+  font-size: .6875rem;
+  font-weight: 600;
+  letter-spacing: .04em;
+}
+.console-page-nav { background: var(--card); }
+.console-shell [data-slot='card'], .enterprise-panel {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: .75rem;
+  background: var(--card);
+  box-shadow: 0 1px 2px rgb(15 23 42 / 3%);
+}
+.console-shell main > div:first-child { padding-top: 1.25rem; }
+@media (min-width: 1024px) {
+  .console-shell main > div { padding-inline: 1.75rem; }
+}
+.console-shell [data-slot='table-header'] { background: color-mix(in srgb, var(--muted) 45%, var(--card)); }
+
+body:not([data-theme-radius]):has(.console-shell) {
+  --radius: .625rem;
+}

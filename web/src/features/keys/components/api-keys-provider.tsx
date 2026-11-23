@@ -16,6 +16,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
+import { useQueryClient } from '@tanstack/react-query'
 import React, { useState, useCallback, useRef, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -47,6 +48,7 @@ const ApiKeysContext = React.createContext<ApiKeysContextType | null>(null)
 
 export function ApiKeysProvider({ children }: { children: React.ReactNode }) {
   const { t } = useTranslation()
+  const client = useQueryClient()
   const [open, setOpen] = useDialogState<ApiKeysDialogType>(null)
   const [currentRow, setCurrentRow] = useState<ApiKey | null>(null)
   const [refreshTrigger, setRefreshTrigger] = useState(0)
@@ -71,7 +73,10 @@ export function ApiKeysProvider({ children }: { children: React.ReactNode }) {
 
   const triggerRefresh = useCallback(() => {
     setRefreshTrigger((prev) => prev + 1)
-  }, [])
+    void client.invalidateQueries({ queryKey: ['enterprise'] })
+    void client.invalidateQueries({ queryKey: ['dashboard'] })
+    void client.invalidateQueries({ queryKey: ['api-keys'] })
+  }, [client])
 
   const resolveRealKey = useCallback(
     async (id: number): Promise<string | null> => {

@@ -19,6 +19,7 @@ For commercial licensing, please contact support@quantumnous.com
 import { Link } from '@tanstack/react-router'
 import { Menu } from 'lucide-react'
 import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
 import {
@@ -29,17 +30,24 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
 
-import { type TopNavLink } from '../types'
+import type { TopNavLink } from '../types'
 
 type TopNavProps = React.HTMLAttributes<HTMLElement> & {
   links: TopNavLink[]
+  presentation?: 'responsive' | 'dropdown'
 }
 
 /**
  * 顶部导航栏组件
  * 在大屏幕显示水平导航，在小屏幕显示下拉菜单
  */
-export function TopNav({ className, links, ...props }: TopNavProps) {
+export function TopNav({
+  className,
+  links,
+  presentation = 'responsive',
+  ...props
+}: TopNavProps) {
+  const { t } = useTranslation()
   // 规范化链接，确保所有可选属性都有默认值
   const normalizedLinks = useMemo(
     () =>
@@ -55,10 +63,17 @@ export function TopNav({ className, links, ...props }: TopNavProps) {
   return (
     <>
       {/* 移动端下拉菜单 */}
-      <div className='lg:hidden'>
+      <div className={presentation === 'dropdown' ? '' : 'lg:hidden'}>
         <DropdownMenu modal={false}>
           <DropdownMenuTrigger
-            render={<Button size='icon' variant='outline' className='size-7' />}
+            render={
+              <Button
+                size='icon'
+                variant='ghost'
+                className='size-8'
+                aria-label={t('Site navigation')}
+              />
+            }
           >
             <Menu />
           </DropdownMenuTrigger>
@@ -67,6 +82,7 @@ export function TopNav({ className, links, ...props }: TopNavProps) {
               ({ title, href, isActive, disabled, external }) => (
                 <DropdownMenuItem
                   key={`${title}-${href}`}
+                  disabled={disabled}
                   render={
                     external ? (
                       <a
@@ -87,7 +103,7 @@ export function TopNav({ className, links, ...props }: TopNavProps) {
                       </Link>
                     )
                   }
-                ></DropdownMenuItem>
+                />
               )
             )}
           </DropdownMenuContent>
@@ -98,6 +114,7 @@ export function TopNav({ className, links, ...props }: TopNavProps) {
       <nav
         className={cn(
           'hidden items-center space-x-4 lg:flex lg:space-x-4 xl:space-x-6',
+          presentation === 'dropdown' && 'lg:hidden',
           className
         )}
         {...props}

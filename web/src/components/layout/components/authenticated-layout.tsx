@@ -16,24 +16,34 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
+import { lazy, Suspense } from 'react'
+
 import { CommandMenu } from '@/components/command-menu'
 import { AnimatedOutlet } from '@/components/page-transition'
 import { SkipToMain } from '@/components/skip-to-main'
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
 import { LayoutProvider } from '@/context/layout-provider'
 import { SearchProvider } from '@/context/search-provider'
+import { useKeyDialogStore } from '@/features/enterprise/key-dialog-store'
 import { getCookie } from '@/lib/cookies'
-import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/stores/auth-store'
 
 import { AppHeader } from './app-header'
 import { AppSidebar } from './app-sidebar'
+import { ConsolePageNav } from './console-page-nav'
+
+const LazyKeyAssignmentDialog = lazy(() =>
+  import('@/features/enterprise/components/key-assignment-dialog').then(
+    (module) => ({ default: module.KeyAssignmentDialog })
+  )
+)
 
 type AuthenticatedLayoutProps = {
   children?: React.ReactNode
 }
 
 export function AuthenticatedLayout(props: AuthenticatedLayoutProps) {
+  const assigningKey = useKeyDialogStore((state) => state.open)
   const defaultOpen = getCookie('sidebar_state') !== 'false'
   const signedIn = useAuthStore((s) => !!s.auth.user)
   // Unmount pages on sign-out, otherwise their queries refetch and toast "Session expired!" / "invalid access token"
@@ -42,24 +52,32 @@ export function AuthenticatedLayout(props: AuthenticatedLayoutProps) {
   return (
     <LayoutProvider>
       <SearchProvider>
-        <SidebarProvider defaultOpen={defaultOpen} className='flex-col'>
+        <SidebarProvider
+          defaultOpen={defaultOpen}
+          className='console-shell h-svh min-h-0 overflow-hidden'
+          style={
+            {
+              '--app-header-height': '0px',
+              '--sidebar-width': '15.5rem',
+            } as React.CSSProperties
+          }
+        >
           <SkipToMain />
-          <AppHeader />
-          <div className='flex min-h-0 w-full flex-1'>
-            <AppSidebar />
-            <SidebarInset
-              className={cn(
-                '@container/content',
-                'h-[calc(100svh-var(--app-header-height,0px))]',
-                'min-h-0 overflow-hidden',
-                'peer-data-[variant=inset]:h-[calc(100svh-var(--app-header-height,0px)-(var(--spacing)*4))]'
-              )}
-            >
+          <AppSidebar />
+          <SidebarInset className='@container/content h-svh min-w-0 overflow-hidden peer-data-[variant=inset]:h-[calc(100svh-var(--spacing)*4)]'>
+            <AppHeader />
+            <ConsolePageNav />
+            <div className='flex min-h-0 flex-1 flex-col overflow-hidden'>
               {props.children ?? <AnimatedOutlet />}
-            </SidebarInset>
-          </div>
+            </div>
+          </SidebarInset>
         </SidebarProvider>
         <CommandMenu />
+        {assigningKey && (
+          <Suspense fallback={null}>
+            <LazyKeyAssignmentDialog />
+          </Suspense>
+        )}
       </SearchProvider>
     </LayoutProvider>
   )

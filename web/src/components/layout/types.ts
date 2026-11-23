@@ -23,6 +23,7 @@ import type { TFunction } from 'i18next'
  * Base navigation item type
  */
 type BaseNavItem = {
+  pages?: NavLink[]
   title: string
   badge?: string
   icon?: React.ElementType
@@ -41,6 +42,9 @@ type BaseNavItem = {
  */
 export type NavLink = BaseNavItem & {
   url: LinkProps['to'] | (string & {})
+  /** Related pages are rendered inside the content area, never nested in the sidebar. */
+  pages?: NavLink[]
+  section?: string
   items?: never
   type?: never
 }
@@ -74,6 +78,7 @@ export type NavItem = NavCollapsible | NavLink | NavChatPresets
 export type NavGroup = {
   id?: string
   title: string
+  subtitle?: string
   items: NavItem[]
 }
 

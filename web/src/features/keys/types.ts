@@ -56,6 +56,7 @@ export type ApiKey = z.infer<typeof apiKeySchema>
 // ============================================================================
 
 export interface ApiResponse<T = unknown> {
+  created_key?: string
   success: boolean
   message?: string
   data?: T
@@ -85,6 +86,9 @@ export interface SearchApiKeysParams {
 }
 
 export interface ApiKeyFormData {
+ assignment_type?: 'employee' | 'department'
+ department_id?: number
+ employee_id?: number | null
   name: string
   remain_quota: number
   expired_time: number

@@ -28,12 +28,14 @@ import {
   DataTablePage,
   useDataTable,
 } from '@/components/data-table'
+import { getUserWorkspaces } from '@/features/enterprise/api'
 import { useMediaQuery } from '@/hooks'
 import { useTableUrlState } from '@/hooks/use-table-url-state'
 import {
   createServerError,
   requireServerSuccess,
 } from '@/lib/server-error-message'
+import { useAuthStore } from '@/stores/auth-store'
 
 import { getGroups, getUsers, searchUsers } from '../api'
 import {
@@ -46,6 +48,8 @@ import type { User, UserSortBy } from '../types'
 import { DataTableBulkActions } from './data-table-bulk-actions'
 import { useUsersColumns } from './users-columns'
 import { useUsers } from './users-provider'
+
+const EMPTY_USERS: User[] = []
 
 const route = getRouteApi('/_authenticated/users/')
 
@@ -64,7 +68,7 @@ function isDisabledUserRow(user: User) {
 
 export function UsersTable() {
   const { t } = useTranslation()
-  const columns = useUsersColumns()
+  const actorId = useAuthStore((state) => state.auth.user?.id)
   const { refreshTrigger } = useUsers()
   const isMobile = useMediaQuery('(max-width: 640px)')
   const [sorting, setSorting] = useState<SortingState>([])
@@ -180,10 +184,25 @@ export function UsersTable() {
     placeholderData: (previousData) => previousData,
   })
 
-  const users = data?.items || []
+  const users = data?.items ?? EMPTY_USERS
+  const userIds = users.map((user) => user.id)
+  const workspaces = useQuery({
+    queryKey: ['enterprise', actorId, 'user-workspaces', userIds],
+    queryFn: () => getUserWorkspaces(userIds),
+    enabled: userIds.length > 0,
+  })
+  const columns = useUsersColumns()
+  const usersWithWorkspaces = useMemo(
+    () =>
+      users.map((user) => ({
+        ...user,
+        enterprise_workspace: workspaces.data?.[user.id],
+      })),
+    [users, workspaces.data]
+  )
 
   const { table } = useDataTable({
-    data: users,
+    data: usersWithWorkspaces,
     columns,
     enableRowSelection: true,
     columnFilters,

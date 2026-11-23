@@ -37,10 +37,12 @@ import { UsersProvider } from '../users-provider'
 import { UsersTable } from '../users-table'
 
 const clients: QueryClient[] = []
+let workspaceNames: Record<number, string> = {}
 const premiumSearchUrl =
   '/api/user/search?keyword=&group=premium&p=1&page_size=20'
 
 beforeEach(() => {
+  workspaceNames = {}
   vi.spyOn(window, 'scrollTo').mockImplementation(() => {})
   localStorage.clear()
   useAuthStore.getState().auth.setUser({ id: 1, username: 'admin', role: 100 })
@@ -54,6 +56,9 @@ afterEach(() => {
 
 async function renderUsers(initialEntry = '/users/') {
   const get = vi.spyOn(api, 'get').mockImplementation(async (url) => {
+    if (url === '/api/enterprise/workspaces') {
+      return { data: { success: true, data: workspaceNames } }
+    }
     if (url === '/api/group/') {
       return { data: { success: true, data: ['default', 'premium'] } }
     }
@@ -151,4 +156,31 @@ it('restores the user group filter from the page URL on load', async () => {
   expect(get).toHaveBeenCalledWith(premiumSearchUrl)
   expect(get).not.toHaveBeenCalledWith('/api/user/', expect.anything())
   expect(getGroupFilterTrigger()).toHaveTextContent('premium')
+})
+
+it('opens an enterprise workspace for an ordinary user and refreshes the ownership cell', async () => {
+  const user = userEvent.setup()
+  await renderUsers()
+  const post = vi.spyOn(api, 'post').mockImplementation(async (url, body) => {
+    expect(url).toBe('/api/user/2/enterprise')
+    expect(body).toEqual({ name: 'Project Team' })
+    workspaceNames = { 2: 'Project Team' }
+    return {
+      data: {
+        success: true,
+        data: { newapi_user_id: 2, name: 'Project Team' },
+      },
+    }
+  })
+  await user.click(
+    screen.getByRole('button', { name: 'Enable enterprise workspace' })
+  )
+  await user.type(screen.getByLabelText('Workspace name'), 'Project Team')
+  await user.click(screen.getByRole('button', { name: 'Enable' }))
+  expect(await screen.findByText('Project Team')).toBeVisible()
+  expect(post).toHaveBeenCalledTimes(1)
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  expect(
+    screen.queryByRole('button', { name: 'Enable enterprise workspace' })
+  ).not.toBeInTheDocument()
 })
