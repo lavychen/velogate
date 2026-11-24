@@ -1,23 +1,33 @@
 import { zodResolver } from '@hookform/resolvers/zod'
+import { Download01Icon, MagicWand01Icon } from '@hugeicons/core-free-icons'
+import { HugeiconsIcon } from '@hugeicons/react'
 import { skipToken, useMutation, useQuery } from '@tanstack/react-query'
-import { Download, Sparkles, Video } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { z } from 'zod'
 
+import { CopyButton } from '@/components/copy-button'
 import { EmptyState } from '@/components/empty-state'
 import { ErrorState } from '@/components/error-state'
 import { LoadingState } from '@/components/loading-state'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
-import { Label } from '@/components/ui/label'
+import {
+  Field,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+  FieldSet,
+} from '@/components/ui/field'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { Progress } from '@/components/ui/progress'
+import { Separator } from '@/components/ui/separator'
 import { Textarea } from '@/components/ui/textarea'
 import { getServerErrorMessage } from '@/lib/server-error-message'
 
 import { generateVideo, getVideoContent, getVideoTask } from './api'
+import { GenerationWorkspace } from './generation-workspace'
 
 function VideoResult(props: { apiKey: string; keyId: number; taskId: string }) {
   const { t } = useTranslation()
@@ -57,9 +67,14 @@ function VideoResult(props: { apiKey: string; keyId: number; taskId: string }) {
       />
       <Button
         variant='outline'
+        role='link'
         render={<a href={url} download={`${props.taskId}.mp4`} />}
       >
-        <Download className='size-4' />
+        <HugeiconsIcon
+          icon={Download01Icon}
+          data-icon='inline-start'
+          aria-hidden='true'
+        />
         {t('Download')}
       </Button>
     </div>
@@ -70,27 +85,32 @@ export function VideoGenerator(props: {
   apiKey: string
   keyId: number
   model: string
+  connectionFields: ReactNode
 }) {
   const { t } = useTranslation()
+  const isSora = /^sora-2(?:-|$)/i.test(props.model)
   const schema = z.object({
     prompt: z.string().trim().min(1, t('Please enter a prompt')),
-    seconds: z.enum(['4', '8', '12']),
-    size: z.enum(['1280x720', '720x1280']),
+    seconds: z.enum(['', '4', '8', '12']),
+    size: z.enum(['', '1280x720', '720x1280']),
   })
   const form = useForm({
     resolver: zodResolver(schema),
     defaultValues: {
       prompt: '',
-      seconds: '4' as const,
-      size: '1280x720' as const,
+      seconds: isSora ? ('4' as const) : ('' as const),
+      size: isSora ? ('1280x720' as const) : ('' as const),
     },
   })
   const submit = useMutation({
     mutationFn: async (values: z.infer<typeof schema>) => {
-      const task = await generateVideo(props.apiKey, {
+      const body: Record<string, string> = {
         model: props.model,
-        ...values,
-      })
+        prompt: values.prompt,
+      }
+      if (values.seconds) body.seconds = values.seconds
+      if (values.size) body.size = values.size
+      const task = await generateVideo(props.apiKey, body)
       if (!task.id) {
         throw new Error(
           t('The response did not include a task ID or video URL.')
@@ -115,6 +135,8 @@ export function VideoGenerator(props: {
       }
       return 5000
     },
+    refetchOnWindowFocus: false,
+    gcTime: 0,
     meta: { errorToast: false },
     retry: false,
   })
@@ -125,22 +147,20 @@ export function VideoGenerator(props: {
   const requestError = submit.error ?? task.error
 
   return (
-    <div className='grid gap-6 lg:grid-cols-[340px_minmax(0,1fr)]'>
-      <Card>
-        <CardContent>
-          <form
-            className='space-y-5'
-            onSubmit={form.handleSubmit((values) => submit.mutate(values))}
-          >
-            <fieldset
-              disabled={isGenerating && !task.isError}
-              className='space-y-5'
-            >
-              <div className='grid gap-2'>
-                <Label htmlFor='video-prompt'>{t('Prompt')}</Label>
+    <GenerationWorkspace
+      pending={isGenerating && !requestError}
+      settings={
+        <form onSubmit={form.handleSubmit((values) => submit.mutate(values))}>
+          <FieldSet disabled={isGenerating}>
+            {props.connectionFields}
+            <Separator />
+            <FieldGroup>
+              <Field data-invalid={Boolean(form.formState.errors.prompt)}>
+                <FieldLabel htmlFor='video-prompt'>{t('Prompt')}</FieldLabel>
                 <Textarea
                   id='video-prompt'
                   rows={6}
+                  className='min-h-36 resize-y'
                   {...form.register('prompt')}
                   placeholder={t('Describe the video you want to generate')}
                   aria-invalid={Boolean(form.formState.errors.prompt)}
@@ -150,37 +170,40 @@ export function VideoGenerator(props: {
                       : undefined
                   }
                 />
-                {form.formState.errors.prompt && (
-                  <p
-                    id='video-prompt-error'
-                    role='alert'
-                    className='text-destructive text-sm'
-                  >
-                    {form.formState.errors.prompt.message}
-                  </p>
-                )}
-              </div>
-              <div className='grid gap-2'>
-                <Label htmlFor='video-duration'>{t('Duration')}</Label>
+                <FieldError
+                  id='video-prompt-error'
+                  errors={[form.formState.errors.prompt]}
+                />
+              </Field>
+              <Field>
+                <FieldLabel htmlFor='video-duration'>
+                  {t('Duration')}
+                </FieldLabel>
                 <NativeSelect
                   id='video-duration'
                   className='w-full'
                   {...form.register('seconds')}
                 >
+                  <NativeSelectOption value=''>
+                    {t('Default')}
+                  </NativeSelectOption>
                   {['4', '8', '12'].map((seconds) => (
                     <NativeSelectOption key={seconds} value={seconds}>
                       {t('{{count}} seconds', { count: Number(seconds) })}
                     </NativeSelectOption>
                   ))}
                 </NativeSelect>
-              </div>
-              <div className='grid gap-2'>
-                <Label htmlFor='video-size'>{t('Video size')}</Label>
+              </Field>
+              <Field>
+                <FieldLabel htmlFor='video-size'>{t('Video size')}</FieldLabel>
                 <NativeSelect
                   id='video-size'
                   className='w-full'
                   {...form.register('size')}
                 >
+                  <NativeSelectOption value=''>
+                    {t('Default')}
+                  </NativeSelectOption>
                   <NativeSelectOption value='1280x720'>
                     1280 × 720 (16:9)
                   </NativeSelectOption>
@@ -188,62 +211,83 @@ export function VideoGenerator(props: {
                     720 × 1280 (9:16)
                   </NativeSelectOption>
                 </NativeSelect>
-              </div>
+              </Field>
               <Button type='submit' className='w-full'>
-                <Sparkles className='size-4' />
-                {t('Generate video')}
+                <HugeiconsIcon
+                  icon={MagicWand01Icon}
+                  data-icon='inline-start'
+                  aria-hidden='true'
+                />
+                {isGenerating && !requestError
+                  ? t('Generating video...')
+                  : t('Generate video')}
               </Button>
-            </fieldset>
-          </form>
-        </CardContent>
-      </Card>
-      <Card className='min-w-0'>
-        <CardContent aria-live='polite'>
-          {!currentTask && !submit.isPending && !requestError && (
-            <EmptyState
-              icon={Video}
-              title={t('Video generation')}
-              description={t('Generated videos will appear here.')}
-            />
+            </FieldGroup>
+          </FieldSet>
+        </form>
+      }
+    >
+      {!currentTask && !submit.isPending && !requestError && (
+        <EmptyState
+          title={t('Video generation')}
+          description={t('Generated videos will appear here.')}
+        />
+      )}
+      {currentTask && !submit.isPending && (
+        <div className='mb-4 flex min-w-0 items-center gap-2 text-xs'>
+          <span className='text-muted-foreground shrink-0'>{t('Task ID')}</span>
+          <span className='min-w-0 truncate font-mono' title={currentTask.id}>
+            {currentTask.id}
+          </span>
+          <CopyButton value={currentTask.id} />
+          {currentTask.status === 'completed' && (
+            <Badge variant='secondary'>{t('Completed')}</Badge>
           )}
-          {isGenerating && !requestError && (
-            <div className='space-y-3'>
-              <LoadingState
-                message={
-                  currentTask?.status === 'queued'
-                    ? t('Queued')
-                    : t('Generating video...')
-                }
-              />
+        </div>
+      )}
+      {isGenerating && !requestError && (
+        <div className='space-y-3'>
+          <LoadingState
+            message={
+              currentTask?.status === 'queued'
+                ? t('Queued')
+                : t('Generating video...')
+            }
+          />
+          {typeof currentTask?.progress === 'number' &&
+            Number.isFinite(currentTask.progress) && (
               <Progress
-                value={Math.min(100, Math.max(0, currentTask?.progress ?? 0))}
+                value={Math.min(100, Math.max(0, currentTask.progress))}
                 aria-label={t('Generation progress')}
               />
-            </div>
-          )}
-          {requestError && (
-            <ErrorState
-              title={t('Generation failed')}
-              description={getServerErrorMessage(requestError)}
-              onRetry={task.isError ? () => void task.refetch() : undefined}
-            />
-          )}
-          {!submit.isPending && currentTask?.status === 'failed' && (
-            <ErrorState
-              title={t('Generation failed')}
-              description={currentTask.error?.message}
-            />
-          )}
-          {!submit.isPending && currentTask?.status === 'completed' && (
-            <VideoResult
-              apiKey={props.apiKey}
-              key={currentTask.id}
-              keyId={props.keyId}
-              taskId={currentTask.id}
-            />
-          )}
-        </CardContent>
-      </Card>
-    </div>
+            )}
+        </div>
+      )}
+      {requestError && (
+        <ErrorState
+          title={t('Generation failed')}
+          description={getServerErrorMessage(requestError)}
+          onRetry={task.isError ? () => void task.refetch() : undefined}
+        />
+      )}
+      {!submit.isPending &&
+        !requestError &&
+        currentTask?.status === 'failed' && (
+          <ErrorState
+            title={t('Generation failed')}
+            description={currentTask.error?.message}
+          />
+        )}
+      {!submit.isPending &&
+        !requestError &&
+        currentTask?.status === 'completed' && (
+          <VideoResult
+            apiKey={props.apiKey}
+            key={currentTask.id}
+            keyId={props.keyId}
+            taskId={currentTask.id}
+          />
+        )}
+    </GenerationWorkspace>
   )
 }

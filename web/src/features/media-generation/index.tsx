@@ -1,19 +1,27 @@
 import { skipToken, useQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
-import { Image, Video } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { EmptyState } from '@/components/empty-state'
 import { ErrorState } from '@/components/error-state'
-import { Main } from '@/components/layout'
+import { SectionPageLayout } from '@/components/layout'
 import { LoadingState } from '@/components/loading-state'
 import { ModelSelector } from '@/components/model-group-selector'
 import { Button } from '@/components/ui/button'
-import { Label } from '@/components/ui/label'
+import { Card, CardContent } from '@/components/ui/card'
+import {
+  Field,
+  FieldDescription,
+  FieldGroup,
+  FieldLabel,
+} from '@/components/ui/field'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { getPricing } from '@/features/pricing/api'
-import { requireServerSuccess } from '@/lib/server-error-message'
+import {
+  getServerErrorMessage,
+  requireServerSuccess,
+} from '@/lib/server-error-message'
 import { useAuthStore } from '@/stores/auth-store'
 
 import { getGenerationKey, getGenerationKeys, getGenerationModels } from './api'
@@ -75,95 +83,114 @@ export function MediaGeneration(props: { mode: 'image' | 'video' }) {
   const title =
     props.mode === 'image' ? t('Image generation') : t('Video generation')
 
+  const setupError =
+    keys.error ?? credential.error ?? models.error ?? catalog.error
+  const noKeys = keys.isSuccess && !keys.data.length
+  const isReady =
+    !setupError &&
+    credential.isSuccess &&
+    models.isSuccess &&
+    catalog.isSuccess &&
+    Boolean(selectedModel)
+  const connectionFields = (
+    <FieldGroup>
+      <Field>
+        <FieldLabel htmlFor='generation-key'>{t('API Key')}</FieldLabel>
+        <NativeSelect
+          id='generation-key'
+          className='w-full'
+          value={keyId ?? ''}
+          disabled={keys.isPending || noKeys}
+          onChange={(event) => setKeySelection(event.target.value)}
+        >
+          {!selectedKey && (
+            <NativeSelectOption value=''>
+              {t('Select API Key')}
+            </NativeSelectOption>
+          )}
+          {keys.data?.map((key) => (
+            <NativeSelectOption key={key.id} value={key.id}>
+              {key.name}
+            </NativeSelectOption>
+          ))}
+        </NativeSelect>
+      </Field>
+      <Field aria-labelledby='generation-model-label'>
+        <FieldLabel id='generation-model-label'>{t('Model')}</FieldLabel>
+        <ModelSelector
+          selectedModel={selectedModel}
+          models={availableModels}
+          onModelChange={setModelSelection}
+          disabled={models.isFetching || !availableModels.length}
+          className='h-9 w-full justify-start px-3 sm:w-full [&>span]:block [&>span]:text-sm'
+        />
+      </Field>
+    </FieldGroup>
+  )
+
+  let setupState
+  if (noKeys) {
+    setupState = (
+      <EmptyState
+        title={t('No enabled API keys found. Create or enable one first.')}
+        action={<Button render={<Link to='/keys' />}>{t('API Keys')}</Button>}
+      />
+    )
+  } else if (setupError) {
+    setupState = (
+      <ErrorState
+        description={getServerErrorMessage(setupError)}
+        onRetry={() => {
+          void keys.refetch()
+          if (keyId) void credential.refetch()
+          if (apiKey) void models.refetch()
+          void catalog.refetch()
+        }}
+      />
+    )
+  } else if (models.isSuccess && catalog.isSuccess && !availableModels.length) {
+    setupState = <EmptyState title={t('No available models')} />
+  } else {
+    setupState = <LoadingState />
+  }
+
   return (
-    <Main className='overflow-y-auto p-3 sm:p-6'>
-      <div className='mx-auto w-full max-w-6xl space-y-6'>
-        <header className='space-y-2'>
-          <h1 className='text-2xl font-semibold tracking-tight'>{title}</h1>
-          <p className='text-muted-foreground text-sm'>
+    <SectionPageLayout>
+      <SectionPageLayout.Title>{title}</SectionPageLayout.Title>
+      <SectionPageLayout.Content>
+        <div className='space-y-4'>
+          <FieldDescription>
             {props.mode === 'image'
               ? t('Generate images from a text prompt.')
               : t('Generate videos from a text prompt.')}
-          </p>
-        </header>
-        <div className='flex flex-wrap items-end gap-4'>
-          <div className='grid min-w-48 gap-2'>
-            <Label htmlFor='generation-key'>{t('API Key')}</Label>
-            <NativeSelect
-              id='generation-key'
-              className='w-full'
-              value={keyId ?? ''}
-              disabled={keys.isPending}
-              onChange={(event) => setKeySelection(event.target.value)}
-            >
-              {!selectedKey && (
-                <NativeSelectOption value=''>
-                  {t('Select API Key')}
-                </NativeSelectOption>
+          </FieldDescription>
+          {isReady && keyId && apiKey ? (
+            <div key={`${userId}-${keyId}-${props.mode}-${selectedModel}`}>
+              {props.mode === 'image' ? (
+                <ImageGenerator
+                  apiKey={apiKey}
+                  model={selectedModel}
+                  connectionFields={connectionFields}
+                />
+              ) : (
+                <VideoGenerator
+                  apiKey={apiKey}
+                  keyId={keyId}
+                  model={selectedModel}
+                  connectionFields={connectionFields}
+                />
               )}
-              {keys.data?.map((key) => (
-                <NativeSelectOption key={key.id} value={key.id}>
-                  {key.name}
-                </NativeSelectOption>
-              ))}
-            </NativeSelect>
-          </div>
-          <div className='grid min-w-48 gap-2'>
-            <Label>{t('Model')}</Label>
-            <ModelSelector
-              selectedModel={selectedModel}
-              models={availableModels}
-              onModelChange={setModelSelection}
-              disabled={models.isFetching || !availableModels.length}
-              className='w-full'
-            />
-          </div>
+            </div>
+          ) : (
+            <Card>
+              <CardContent>
+                <div className='max-w-sm'>{connectionFields}</div>
+                {setupState}
+              </CardContent>
+            </Card>
+          )}
         </div>
-        {(keys.isPending ||
-          credential.isLoading ||
-          models.isLoading ||
-          catalog.isPending) && <LoadingState />}
-        {(keys.isError ||
-          credential.isError ||
-          models.isError ||
-          catalog.isError) && (
-          <ErrorState
-            onRetry={() => {
-              void keys.refetch()
-              if (keyId) void credential.refetch()
-              if (credential.data) void models.refetch()
-              void catalog.refetch()
-            }}
-          />
-        )}
-        {keys.isSuccess && !keys.data.length && (
-          <EmptyState
-            title={t('No enabled API keys found. Create or enable one first.')}
-            action={
-              <Button render={<Link to='/keys' />}>{t('API Keys')}</Button>
-            }
-          />
-        )}
-        {models.isSuccess && catalog.isSuccess && !availableModels.length && (
-          <EmptyState
-            icon={props.mode === 'image' ? Image : Video}
-            title={t('No available models')}
-          />
-        )}
-        {keyId && credential.data && selectedModel && (
-          <div key={`${userId}-${keyId}-${props.mode}`}>
-            {props.mode === 'image' ? (
-              <ImageGenerator apiKey={credential.data} model={selectedModel} />
-            ) : (
-              <VideoGenerator
-                apiKey={credential.data}
-                keyId={keyId}
-                model={selectedModel}
-              />
-            )}
-          </div>
-        )}
-      </div>
-    </Main>
+      </SectionPageLayout.Content>
+    </SectionPageLayout>
   )
 }
