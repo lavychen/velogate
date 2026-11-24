@@ -24,10 +24,17 @@ import {
   type ReactNode,
 } from 'react'
 
+import { cn } from '@/lib/utils'
+
 import { Main } from './main'
 import { PageFooterProvider } from './page-footer'
 
 type SlotProps = { children?: ReactNode }
+
+function SectionPageLayoutHeader(_props: SlotProps) {
+  return null
+}
+SectionPageLayoutHeader.displayName = 'SectionPageLayout.Header'
 
 function SectionPageLayoutTitle(_props: SlotProps) {
   return null
@@ -51,6 +58,7 @@ SectionPageLayoutBreadcrumb.displayName = 'SectionPageLayout.Breadcrumb'
 
 export type SectionPageLayoutProps = {
   children: ReactNode
+  fluid?: boolean
   fixedContent?: boolean
   stackActionsOnMobile?: boolean
 }
@@ -60,6 +68,7 @@ export function SectionPageLayout(props: SectionPageLayoutProps) {
     null
   )
 
+  let header: ReactNode = null
   let title: ReactNode = null
   let actions: ReactNode = null
   let content: ReactNode = null
@@ -68,7 +77,8 @@ export function SectionPageLayout(props: SectionPageLayoutProps) {
   Children.forEach(props.children, (node) => {
     if (!isValidElement(node)) return
     const child = node as ReactElement<SlotProps>
-    if (child.type === SectionPageLayoutTitle) title = child.props.children
+    if (child.type === SectionPageLayoutHeader) header = child.props.children
+    else if (child.type === SectionPageLayoutTitle) title = child.props.children
     else if (child.type === SectionPageLayoutActions) {
       actions = child.props.children
     } else if (child.type === SectionPageLayoutContent) {
@@ -80,50 +90,71 @@ export function SectionPageLayout(props: SectionPageLayoutProps) {
 
   return (
     <PageFooterProvider container={footerContainer}>
-      <Main>
-        <div className='shrink-0 px-3 pt-3 pb-2.5 sm:px-4 sm:pt-5 sm:pb-3'>
-          {breadcrumb != null && (
-            <div className='mb-2 sm:mb-3'>{breadcrumb}</div>
-          )}
-          <div className='flex flex-wrap items-center justify-between gap-x-3 gap-y-2 sm:gap-x-4'>
-            <div
-              className={
-                props.stackActionsOnMobile
-                  ? 'min-w-0 flex-1 max-sm:basis-full'
-                  : 'min-w-0 flex-1'
-              }
-            >
-              <h2 className='truncate text-base font-bold tracking-tight sm:text-lg'>
-                {title}
-              </h2>
-            </div>
-            {actions != null && (
-              <div className='flex max-w-full shrink-0 flex-wrap items-center justify-end gap-2 sm:gap-x-4'>
-                {actions}
+      <Main
+        className={cn(
+          'mx-auto w-full min-w-0',
+          props.fluid ? 'max-w-none' : 'max-w-[1440px]'
+        )}
+      >
+        {(header != null ||
+          title != null ||
+          actions != null ||
+          breadcrumb != null) && (
+          <div
+            className={cn(
+              'shrink-0 px-3 pt-3 pb-2.5 sm:px-4 sm:pt-5 sm:pb-3',
+              props.fluid && 'sm:px-6 lg:px-8'
+            )}
+          >
+            {breadcrumb != null && (
+              <div className='mb-2 sm:mb-3'>{breadcrumb}</div>
+            )}
+            {header ?? (
+              <div className='flex flex-wrap items-center justify-between gap-x-3 gap-y-2 sm:gap-x-4'>
+                <div
+                  className={
+                    props.stackActionsOnMobile
+                      ? 'min-w-0 flex-1 max-sm:basis-full'
+                      : 'min-w-0 flex-1'
+                  }
+                >
+                  <h2 className='truncate text-base font-bold tracking-tight sm:text-lg'>
+                    {title}
+                  </h2>
+                </div>
+                {actions != null && (
+                  <div className='flex max-w-full shrink-0 flex-wrap items-center justify-end gap-2 sm:gap-x-4'>
+                    {actions}
+                  </div>
+                )}
               </div>
             )}
           </div>
-        </div>
+        )}
 
         <div
-          className={
-            props.fixedContent
-              ? 'min-h-0 flex-1 overflow-hidden px-3 pt-1 pb-3 sm:px-4 sm:pt-1.5 sm:pb-4'
-              : 'min-h-0 flex-1 overflow-auto px-3 pt-1 pb-3 sm:px-4 sm:pt-1.5 sm:pb-4'
-          }
+          className={cn(
+            'min-h-0 flex-1 overflow-auto px-3 pt-1 pb-3 sm:px-4 sm:pt-1.5 sm:pb-4',
+            props.fixedContent && 'overflow-hidden',
+            props.fluid && 'sm:px-6 lg:px-8'
+          )}
         >
           {content}
         </div>
 
         <div
           ref={setFooterContainer}
-          className='bg-background shrink-0 border-t px-3 py-2.5 empty:hidden sm:px-4 sm:py-3'
+          className={cn(
+            'bg-background shrink-0 border-t px-3 py-2.5 empty:hidden sm:px-4 sm:py-3',
+            props.fluid && 'sm:px-6 lg:px-8'
+          )}
         />
       </Main>
     </PageFooterProvider>
   )
 }
 
+SectionPageLayout.Header = SectionPageLayoutHeader
 SectionPageLayout.Title = SectionPageLayoutTitle
 SectionPageLayout.Actions = SectionPageLayoutActions
 SectionPageLayout.Content = SectionPageLayoutContent

@@ -93,8 +93,8 @@ export function Playground() {
         />
       </div>
 
-      {/* Input area: center content and constrain to the same container width */}
-      <div className='mx-auto w-full max-w-4xl'>
+      {/* Keep the input aligned with the full-width conversation. */}
+      <div className='w-full shrink-0 px-3 sm:px-6 lg:px-8'>
         <PlaygroundInput
           config={config}
           disabled={isGenerating}

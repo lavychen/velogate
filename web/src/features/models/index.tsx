@@ -121,6 +121,7 @@ function ModelsContent() {
   return (
     <>
       <SectionPageLayout
+        fluid
         fixedContent
         stackActionsOnMobile={activeSection === 'metadata'}
       >
