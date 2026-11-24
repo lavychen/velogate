@@ -99,10 +99,10 @@ function sidebarFor(admin?: object, user?: object, canConfigure = true) {
 }
 
 describe('flat console navigation and legacy visibility', () => {
-  it('groups all destinations into four groups with account settings and twelve flat links', () => {
+  it('groups destinations into five groups including the experience center', () => {
     const { result } = sidebarFor()
     expect(result.current.map((group) => group.items.length)).toEqual([
-      4, 3, 2, 3,
+      3, 3, 3, 2, 3,
     ])
     expect(
       result.current
@@ -114,6 +114,9 @@ describe('flat console navigation and legacy visibility', () => {
       .flatMap((item) => item.pages ?? [item])
     expect(pages.map((page) => page.url)).toEqual(
       expect.arrayContaining([
+        '/playground',
+        '/image-generation',
+        '/video-generation',
         '/dashboard/overview',
         '/dashboard/models',
         '/dashboard/flow',

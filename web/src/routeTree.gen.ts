@@ -27,7 +27,9 @@ import { Route as errors404RouteImport } from './routes/(errors)/404'
 import { Route as errors500RouteImport } from './routes/(errors)/500'
 import { Route as errors503RouteImport } from './routes/(errors)/503'
 import { Route as AuthenticatedChat2linkRouteImport } from './routes/_authenticated/chat2link'
+import { Route as AuthenticatedImageGenerationRouteImport } from './routes/_authenticated/image-generation'
 import { Route as AuthenticatedSystemSettingsRouteRouteImport } from './routes/_authenticated/system-settings/route'
+import { Route as AuthenticatedVideoGenerationRouteImport } from './routes/_authenticated/video-generation'
 import { Route as AboutIndexRouteImport } from './routes/about/index'
 import { Route as OauthProviderRouteImport } from './routes/oauth/$provider'
 import { Route as PricingIndexRouteImport } from './routes/pricing/index'
@@ -166,10 +168,22 @@ const AuthenticatedChat2linkRoute = AuthenticatedChat2linkRouteImport.update({
   path: '/chat2link',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedImageGenerationRoute =
+  AuthenticatedImageGenerationRouteImport.update({
+    id: '/image-generation',
+    path: '/image-generation',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedSystemSettingsRouteRoute =
   AuthenticatedSystemSettingsRouteRouteImport.update({
     id: '/system-settings',
     path: '/system-settings',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedVideoGenerationRoute =
+  AuthenticatedVideoGenerationRouteImport.update({
+    id: '/video-generation',
+    path: '/video-generation',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AboutIndexRoute = AboutIndexRouteImport.update({
@@ -475,6 +489,8 @@ export interface FileRoutesByFullPath {
   '/500': typeof errors500Route
   '/503': typeof errors503Route
   '/chat2link': typeof AuthenticatedChat2linkRoute
+  '/image-generation': typeof AuthenticatedImageGenerationRoute
+  '/video-generation': typeof AuthenticatedVideoGenerationRoute
   '/oauth/$provider': typeof OauthProviderRoute
   '/about/': typeof AboutIndexRoute
   '/pricing/': typeof PricingIndexRoute
@@ -542,6 +558,8 @@ export interface FileRoutesByTo {
   '/500': typeof errors500Route
   '/503': typeof errors503Route
   '/chat2link': typeof AuthenticatedChat2linkRoute
+  '/image-generation': typeof AuthenticatedImageGenerationRoute
+  '/video-generation': typeof AuthenticatedVideoGenerationRoute
   '/oauth/$provider': typeof OauthProviderRoute
   '/about': typeof AboutIndexRoute
   '/pricing': typeof PricingIndexRoute
@@ -613,6 +631,8 @@ export interface FileRoutesById {
   '/(errors)/500': typeof errors500Route
   '/(errors)/503': typeof errors503Route
   '/_authenticated/chat2link': typeof AuthenticatedChat2linkRoute
+  '/_authenticated/image-generation': typeof AuthenticatedImageGenerationRoute
+  '/_authenticated/video-generation': typeof AuthenticatedVideoGenerationRoute
   '/oauth/$provider': typeof OauthProviderRoute
   '/about/': typeof AboutIndexRoute
   '/pricing/': typeof PricingIndexRoute
@@ -683,6 +703,8 @@ export interface FileRouteTypes {
     | '/500'
     | '/503'
     | '/chat2link'
+    | '/image-generation'
+    | '/video-generation'
     | '/oauth/$provider'
     | '/about/'
     | '/pricing/'
@@ -750,6 +772,8 @@ export interface FileRouteTypes {
     | '/500'
     | '/503'
     | '/chat2link'
+    | '/image-generation'
+    | '/video-generation'
     | '/oauth/$provider'
     | '/about'
     | '/pricing'
@@ -820,6 +844,8 @@ export interface FileRouteTypes {
     | '/(errors)/500'
     | '/(errors)/503'
     | '/_authenticated/chat2link'
+    | '/_authenticated/image-generation'
+    | '/_authenticated/video-generation'
     | '/oauth/$provider'
     | '/about/'
     | '/pricing/'
@@ -1018,11 +1044,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedChat2linkRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/image-generation': {
+      id: '/_authenticated/image-generation'
+      path: '/image-generation'
+      fullPath: '/image-generation'
+      preLoaderRoute: typeof AuthenticatedImageGenerationRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/system-settings': {
       id: '/_authenticated/system-settings'
       path: '/system-settings'
       fullPath: '/system-settings'
       preLoaderRoute: typeof AuthenticatedSystemSettingsRouteRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/video-generation': {
+      id: '/_authenticated/video-generation'
+      path: '/video-generation'
+      fullPath: '/video-generation'
+      preLoaderRoute: typeof AuthenticatedVideoGenerationRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/about/': {
@@ -1463,6 +1503,8 @@ const AuthenticatedSystemSettingsRouteRouteWithChildren =
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedSystemSettingsRouteRoute: typeof AuthenticatedSystemSettingsRouteRouteWithChildren
   AuthenticatedChat2linkRoute: typeof AuthenticatedChat2linkRoute
+  AuthenticatedImageGenerationRoute: typeof AuthenticatedImageGenerationRoute
+  AuthenticatedVideoGenerationRoute: typeof AuthenticatedVideoGenerationRoute
   AuthenticatedChatChatIdRoute: typeof AuthenticatedChatChatIdRoute
   AuthenticatedDashboardSectionRoute: typeof AuthenticatedDashboardSectionRoute
   AuthenticatedEnterpriseSectionRoute: typeof AuthenticatedEnterpriseSectionRoute
@@ -1494,6 +1536,8 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedSystemSettingsRouteRoute:
     AuthenticatedSystemSettingsRouteRouteWithChildren,
   AuthenticatedChat2linkRoute: AuthenticatedChat2linkRoute,
+  AuthenticatedImageGenerationRoute: AuthenticatedImageGenerationRoute,
+  AuthenticatedVideoGenerationRoute: AuthenticatedVideoGenerationRoute,
   AuthenticatedChatChatIdRoute: AuthenticatedChatChatIdRoute,
   AuthenticatedDashboardSectionRoute: AuthenticatedDashboardSectionRoute,
   AuthenticatedEnterpriseSectionRoute: AuthenticatedEnterpriseSectionRoute,

@@ -24,7 +24,9 @@ import {
   ScrollText,
   ShieldCheck,
   Settings,
-  Sparkles,
+  MessageSquare,
+  Image,
+  Video,
   Users,
   UserRound,
   Wallet,
@@ -77,16 +79,6 @@ export function useSidebarData(badges: SidebarBadges = {}): SidebarData {
             ],
           },
           {
-            title: t('AI workbench'),
-            url: '/playground',
-            icon: Sparkles,
-            activeUrls: ['/chat', '/chat2link'],
-            pages: [
-              { title: t('Playground'), url: '/playground' },
-              { title: t('Chat'), url: '/chat2link' },
-            ],
-          },
-          {
             title: t('Call Logs'),
             url: '/usage-logs/common',
             icon: ScrollText,
@@ -100,6 +92,28 @@ export function useSidebarData(badges: SidebarBadges = {}): SidebarData {
             title: t('Audit Logs'),
             url: '/usage-logs/audit',
             icon: ShieldCheck,
+          },
+        ],
+      },
+      {
+        id: 'experience',
+        title: t('Experience Center'),
+        items: [
+          {
+            title: t('Online Chat'),
+            url: '/playground',
+            icon: MessageSquare,
+            pages: [{ title: t('Online Chat'), url: '/playground' }],
+          },
+          {
+            title: t('Image generation'),
+            url: '/image-generation',
+            icon: Image,
+          },
+          {
+            title: t('Video generation'),
+            url: '/video-generation',
+            icon: Video,
           },
         ],
       },

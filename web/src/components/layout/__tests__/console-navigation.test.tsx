@@ -94,7 +94,7 @@ async function renderNavigation(path: string, role = 100, modules = '') {
 test('audit page selects its own sidebar destination without showing call log tabs', async () => {
   await renderNavigation('/usage-logs/audit')
   const sidebar = screen.getByRole('navigation', { name: 'Primary' })
-  expect(within(sidebar).getAllByRole('link')).toHaveLength(12)
+  expect(within(sidebar).getAllByRole('link')).toHaveLength(14)
   expect(
     within(sidebar).queryByRole('button', { expanded: false })
   ).not.toBeInTheDocument()
@@ -138,7 +138,7 @@ test('settings category selection navigates to its first real page and leaves si
     within(screen.getByRole('navigation', { name: 'Primary' })).getAllByRole(
       'link'
     )
-  ).toHaveLength(12)
+  ).toHaveLength(14)
   await user.selectOptions(
     screen.getByRole('combobox', { name: 'Settings category' }),
     'Operations'
@@ -160,7 +160,7 @@ test('settings category selection navigates to its first real page and leaves si
 test('ordinary users cannot discover admin pages through merged wallet and dashboard navigation', async () => {
   await renderNavigation('/wallet', 1)
   const sidebar = screen.getByRole('navigation', { name: 'Primary' })
-  expect(within(sidebar).getAllByRole('link')).toHaveLength(9)
+  expect(within(sidebar).getAllByRole('link')).toHaveLength(11)
   expect(
     screen.queryByRole('link', { name: 'Redemption Codes' })
   ).not.toBeInTheDocument()
@@ -187,4 +187,25 @@ test('account settings groups profile and security and respects their individual
   expect(
     within(group).queryByRole('link', { name: 'Security & Access' })
   ).not.toBeInTheDocument()
+})
+
+test('experience center contains only online chat and the two generation pages', async () => {
+  await renderNavigation('/playground', 1)
+  const group = screen.getByText('Experience Center').parentElement
+  expect(group).not.toBeNull()
+  if (!group) throw new Error('Experience Center group is missing')
+  expect(
+    within(group)
+      .getAllByRole('link')
+      .map((link) => link.textContent)
+  ).toEqual(['Online Chat', 'Image generation', 'Video generation'])
+  expect(
+    within(group).getByRole('link', { name: 'Online Chat' })
+  ).toHaveAttribute('aria-current', 'page')
+  expect(
+    screen.queryByRole('navigation', { name: 'Online Chat' })
+  ).not.toBeInTheDocument()
+  expect(screen.queryByText('AI workbench')).not.toBeInTheDocument()
+  expect(screen.queryByText('Playground')).not.toBeInTheDocument()
+  expect(screen.queryByRole('link', { name: 'Chat' })).not.toBeInTheDocument()
 })

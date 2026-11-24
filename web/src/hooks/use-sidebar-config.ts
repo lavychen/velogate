@@ -40,6 +40,8 @@ const DEFAULT_SIDEBAR_MODULES: SidebarModulesAdminConfig = {
   chat: {
     enabled: true,
     playground: true,
+    image: true,
+    video: true,
     chat: true,
   },
   console: {
@@ -100,6 +102,8 @@ const URL_TO_CONFIG_MAP: Record<string, { section: string; module: string }> = {
   '/chat': { section: 'chat', module: 'chat' },
   '/chat2link': { section: 'chat', module: 'chat' },
   '/playground': { section: 'chat', module: 'playground' },
+  '/image-generation': { section: 'chat', module: 'image' },
+  '/video-generation': { section: 'chat', module: 'video' },
   '/dashboard': { section: 'console', module: 'detail' },
   '/dashboard/overview': { section: 'console', module: 'detail' },
   '/dashboard/models': { section: 'console', module: 'detail' },

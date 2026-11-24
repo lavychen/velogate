@@ -17,15 +17,12 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { Link, useLocation, useNavigate } from '@tanstack/react-router'
-import { MessageSquare } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
-import { useIsSidebarModuleVisible } from '@/hooks/use-sidebar-config'
 import { useSidebarView } from '@/hooks/use-sidebar-view'
 
 import { checkIsActive } from '../lib/url-utils'
-import { ChatPresetsItem } from './chat-presets-item'
 
 /** Related screens share a content navigation bar while sidebar destinations stay fixed. */
 export function ConsolePageNav() {
@@ -33,7 +30,6 @@ export function ConsolePageNav() {
   const pathname = useLocation({ select: (location) => location.pathname })
   const navigate = useNavigate()
   const { navGroups } = useSidebarView()
-  const chatVisible = useIsSidebarModuleVisible('/chat')
   const current = navGroups
     .flatMap((group) => group.items)
     .find((item) => checkIsActive(pathname, item))
@@ -51,9 +47,8 @@ export function ConsolePageNav() {
     sections.length > 0
       ? pages.filter((page) => page.section === activeSection)
       : pages
-  const isWorkbench = current?.activeUrls?.includes('/chat')
 
-  if (pages.length < 2 && !isWorkbench) return null
+  if (pages.length < 2) return null
 
   return (
     <nav
@@ -96,16 +91,6 @@ export function ConsolePageNav() {
             )}
           </Link>
         ))}
-        {isWorkbench && chatVisible && (
-          <ChatPresetsItem
-            presentation='toolbar'
-            item={{
-              title: t('Chat'),
-              type: 'chat-presets',
-              icon: MessageSquare,
-            }}
-          />
-        )}
       </div>
     </nav>
   )
