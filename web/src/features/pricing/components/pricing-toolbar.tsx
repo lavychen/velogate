@@ -86,7 +86,7 @@ export function PricingToolbar(props: PricingToolbarProps) {
   const sortLabels = getSortLabels(t)
 
   return (
-    <div className='bg-card rounded-xl border p-3'>
+    <div className='bg-card rounded-2xl border px-4 py-3 shadow-xs'>
       <div className='flex flex-wrap items-center justify-between gap-3'>
         <div className='flex items-center gap-2'>
           <Button
@@ -94,7 +94,7 @@ export function PricingToolbar(props: PricingToolbarProps) {
             variant='outline'
             size='sm'
             onClick={() => setMobileFiltersOpen(true)}
-            className='gap-1.5 xl:hidden'
+            className='gap-1.5 lg:hidden'
           >
             <Filter className='size-4' />
             {t('Filter')}
@@ -127,8 +127,9 @@ export function PricingToolbar(props: PricingToolbarProps) {
                 props.onRechargePriceChange(values[0] === 'recharge')
               }
             }}
-            variant='outline'
             size='sm'
+            spacing={1}
+            className='model-square-segments'
             aria-label={t('Price display mode')}
           >
             <ToggleGroupItem value='standard'>{t('Standard')}</ToggleGroupItem>
@@ -141,8 +142,9 @@ export function PricingToolbar(props: PricingToolbarProps) {
                 props.onTokenUnitChange(values[0])
               }
             }}
-            variant='outline'
             size='sm'
+            spacing={1}
+            className='model-square-segments font-mono'
             aria-label={t('Token unit')}
           >
             <ToggleGroupItem value='M'>/1M</ToggleGroupItem>
@@ -194,7 +196,7 @@ export function PricingToolbar(props: PricingToolbarProps) {
       <Sheet open={mobileFiltersOpen} onOpenChange={setMobileFiltersOpen}>
         <SheetContent
           side='left'
-          className={sideDrawerContentClassName('sm:max-w-md')}
+          className={sideDrawerContentClassName('model-square sm:max-w-md')}
         >
           <SheetHeader className={sideDrawerHeaderClassName()}>
             <SheetTitle>{t('Filter')}</SheetTitle>

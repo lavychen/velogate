@@ -304,6 +304,45 @@ describe('pricing controls', () => {
     ).toBeVisible()
   })
 
+  it('collapses the vendor list with the keyboard and preserves its selection when reopened', async () => {
+    const user = userEvent.setup()
+    const props = toolbarProps()
+    render(
+      <PricingSidebar
+        {...props}
+        vendorFilter='Anthropic'
+        hasActiveFilters
+        vendors={[{ id: 1, name: 'Anthropic' }]}
+        models={[
+          {
+            id: 1,
+            model_name: 'claude',
+            vendor_name: 'Anthropic',
+            quota_type: 0,
+            model_ratio: 1,
+            completion_ratio: 1,
+            enable_groups: ['default'],
+          },
+        ]}
+      />
+    )
+    const trigger = screen.getByRole('button', {
+      name: 'All Vendors',
+    })
+    expect(
+      screen.getByRole('button', { name: /^Anthropic\s*1$/ })
+    ).toHaveAttribute('aria-pressed', 'true')
+    trigger.focus()
+    await user.keyboard('{Enter}')
+    expect(trigger).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByRole('button', { name: /^Anthropic\s*1$/ })).toBeNull()
+    await user.keyboard('{Enter}')
+    expect(trigger).toHaveAttribute('aria-expanded', 'true')
+    expect(
+      screen.getByRole('button', { name: /^Anthropic\s*1$/ })
+    ).toHaveAttribute('aria-pressed', 'true')
+  })
+
   it('changes the token unit and keeps the selected unit pressed when clicked again', async () => {
     const props = toolbarProps()
     const user = userEvent.setup()

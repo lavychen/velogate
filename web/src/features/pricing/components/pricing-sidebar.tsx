@@ -53,6 +53,7 @@ type FilterSectionProps = {
   value: string
   options: FilterOption[]
   onChange: (value: string) => void
+  layout?: 'chips' | 'list'
 }
 
 export interface PricingSidebarProps {
@@ -88,15 +89,26 @@ function FilterChip(props: {
   option: FilterOption
   active: boolean
   onClick: () => void
+  layout?: 'chips' | 'list'
 }) {
   return (
     <Button
       type='button'
-      variant={props.active ? 'secondary' : 'outline'}
+      variant='ghost'
       size='sm'
       onClick={props.onClick}
       aria-pressed={props.active}
-      className='h-auto max-w-full gap-1.5 px-2 py-1 text-xs'
+      className={cn(
+        'border-border h-auto max-w-full gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs shadow-none',
+        props.layout === 'list' &&
+          'w-full justify-start rounded-xl border-transparent py-2',
+        props.active
+          ? 'border-primary bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground'
+          : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+        props.active &&
+          props.layout === 'list' &&
+          'border-transparent bg-accent text-accent-foreground hover:bg-accent hover:text-accent-foreground'
+      )}
       title={props.option.label}
     >
       {props.option.icon && (
@@ -106,9 +118,10 @@ function FilterChip(props: {
       {(props.option.suffix || props.option.count != null) && (
         <span
           className={cn(
-            'rounded-md px-1.5 py-0.5 text-[12px]',
+            'rounded-md px-1 py-0.5 font-mono text-[10px] tabular-nums',
+            props.layout === 'list' && 'ml-auto px-1.5',
             props.active
-              ? 'bg-background text-foreground'
+              ? 'bg-white/15 text-inherit'
               : 'bg-muted text-muted-foreground'
           )}
         >
@@ -121,22 +134,28 @@ function FilterChip(props: {
 
 function FilterSection(props: FilterSectionProps) {
   return (
-    <Collapsible
-      defaultOpen
-      className='border-border/70 border-b pb-3 last:border-b-0'
-    >
-      <CollapsibleTrigger className='group flex w-full items-center justify-between py-2.5 text-left'>
-        <span className='text-foreground text-sm font-semibold'>
+    <Collapsible defaultOpen className='border-t pt-3'>
+      <CollapsibleTrigger className='group focus-visible:ring-ring flex w-full items-center justify-between rounded-md py-1.5 text-left outline-none focus-visible:ring-2'>
+        <span className='text-foreground text-xs font-semibold'>
           {props.title}
         </span>
-        <ChevronDown className='text-muted-foreground size-4 transition-transform group-data-[panel-open]:rotate-180' />
+        <ChevronDown
+          aria-hidden
+          className='text-muted-foreground size-3.5 -rotate-90 transition-transform group-data-[panel-open]:rotate-0'
+        />
       </CollapsibleTrigger>
       <CollapsibleContent>
-        <div className='flex flex-wrap gap-1.5'>
+        <div
+          className={cn(
+            'mt-2 flex flex-wrap gap-1.5',
+            props.layout === 'list' && 'flex-col gap-1'
+          )}
+        >
           {props.options.map((option) => (
             <FilterChip
               key={option.value}
               option={option}
+              layout={props.layout}
               active={props.value === option.value}
               onClick={() => props.onChange(option.value)}
             />
@@ -259,11 +278,16 @@ export const PricingSidebar = memo(function PricingSidebar(
   ]
 
   return (
-    <aside className={cn('bg-card rounded-xl border p-3', props.className)}>
-      <div className='mb-2.5 flex items-center justify-between gap-2'>
+    <aside
+      className={cn(
+        'bg-card rounded-2xl border p-5 shadow-xs',
+        props.className
+      )}
+    >
+      <div className='mb-5 flex items-start justify-between gap-2'>
         <div>
           <h2 className='text-foreground text-sm font-bold'>{t('Filter')}</h2>
-          <p className='text-muted-foreground mt-1 text-xs'>
+          <p className='text-muted-foreground mt-1 text-[11px] leading-relaxed'>
             {t('Refine models by provider, group, type, and tags.')}
           </p>
         </div>
@@ -273,7 +297,7 @@ export const PricingSidebar = memo(function PricingSidebar(
           size='sm'
           onClick={props.onClearFilters}
           disabled={!props.hasActiveFilters}
-          className='h-7 gap-1.5 px-2 text-xs'
+          className='text-primary h-7 gap-1 px-1.5 text-[11px]'
         >
           <RotateCcw className='size-3.5' />
           {t('Reset')}
@@ -286,7 +310,7 @@ export const PricingSidebar = memo(function PricingSidebar(
         </Badge>
       )}
 
-      <div className='space-y-1'>
+      <div className='space-y-4'>
         <FilterSection
           title={t('Groups')}
           value={props.groupFilter}
@@ -297,6 +321,7 @@ export const PricingSidebar = memo(function PricingSidebar(
           title={t('All Vendors')}
           value={props.vendorFilter}
           options={vendorOptions}
+          layout='list'
           onChange={props.onVendorChange}
         />
         <FilterSection

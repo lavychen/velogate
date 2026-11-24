@@ -28,14 +28,18 @@ export interface LoadingSkeletonProps {
 export function LoadingSkeleton(props: LoadingSkeletonProps) {
   return (
     <div aria-busy='true'>
-      <div className='mx-auto mb-5 flex max-w-3xl flex-col items-center pt-5 sm:mb-10 sm:pt-10'>
-        <Skeleton className='h-[clamp(2.3rem,6.325vw,4.025rem)] w-48 max-w-full sm:w-64' />
-        <Skeleton className='mt-3 h-5 w-56 max-w-full sm:mt-4 sm:h-6' />
-        <Skeleton className='mt-2 h-5 w-full max-w-xl' />
-        <Skeleton className='mt-4 h-10 w-full max-w-2xl sm:mt-6' />
+      <div className='mb-12 flex flex-col justify-between gap-4 md:flex-row md:items-center'>
+        <div className='min-w-0 flex-1'>
+          <div className='flex items-center gap-3'>
+            <Skeleton className='h-8 w-40 max-w-full' />
+            <Skeleton className='h-7 w-24 rounded-full' />
+          </div>
+          <Skeleton className='mt-2 h-4 w-full max-w-xl' />
+        </div>
+        <Skeleton className='h-11 w-full shrink-0 rounded-xl md:w-[340px] lg:w-[380px]' />
       </div>
-      <div className='grid gap-4 xl:grid-cols-[280px_minmax(0,1fr)]'>
-        <div className='hidden self-start rounded-xl border p-3 xl:block'>
+      <div className='grid gap-6 lg:grid-cols-[256px_minmax(0,1fr)]'>
+        <div className='bg-card hidden self-start rounded-2xl border p-5 lg:block'>
           <Skeleton className='mb-4 h-5 w-24' />
           {Array.from({ length: 5 }, (_, index) => (
             <div
@@ -52,7 +56,7 @@ export function LoadingSkeleton(props: LoadingSkeletonProps) {
           ))}
         </div>
         <div className='flex min-w-0 flex-col gap-4'>
-          <div className='flex flex-wrap items-center justify-between gap-3 rounded-xl border p-3'>
+          <div className='bg-card flex flex-wrap items-center justify-between gap-3 rounded-2xl border px-4 py-3'>
             <Skeleton className='h-7 w-20' />
             <div className='flex flex-wrap gap-2'>
               <Skeleton className='h-7 w-32' />
@@ -74,10 +78,13 @@ export function LoadingSkeleton(props: LoadingSkeletonProps) {
               ))}
             </div>
           ) : (
-            <div className='grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-3'>
+            <div className='grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3'>
               {Array.from({ length: 6 }, (_, index) => (
-                <Card key={index} className='gap-3'>
-                  <CardHeader className='flex flex-row gap-3'>
+                <Card
+                  key={index}
+                  className='gap-4 rounded-2xl border py-5 ring-0'
+                >
+                  <CardHeader className='flex flex-row gap-3 px-5'>
                     <Skeleton className='size-10 shrink-0' />
                     <div className='flex min-w-0 flex-1 flex-col gap-2'>
                       <Skeleton className='h-5 w-40 max-w-full' />
@@ -85,7 +92,7 @@ export function LoadingSkeleton(props: LoadingSkeletonProps) {
                     </div>
                     <Skeleton className='size-7 shrink-0' />
                   </CardHeader>
-                  <CardContent className='flex flex-1 flex-col gap-3'>
+                  <CardContent className='flex flex-1 flex-col gap-4 px-5'>
                     <div className='flex flex-col gap-2'>
                       <Skeleton className='h-3.5 w-full' />
                       <Skeleton className='h-3.5 w-4/5' />
@@ -103,8 +110,8 @@ export function LoadingSkeleton(props: LoadingSkeletonProps) {
                       <Skeleton className='h-4 w-28 max-w-full' />
                     </div>
                   </CardContent>
-                  <CardFooter className='border-0 bg-transparent pt-0'>
-                    <div className='border-border/60 flex w-full items-center justify-between gap-3 border-t pt-2'>
+                  <CardFooter className='border-0 bg-transparent px-5 pt-0 pb-5'>
+                    <div className='border-border/60 flex w-full flex-wrap items-center justify-between gap-3 border-t pt-3'>
                       <div className='flex items-start gap-5'>
                         <div className='flex w-24 shrink-0 flex-col gap-1'>
                           <Skeleton className='h-4 w-10' />
