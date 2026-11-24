@@ -1,49 +1,39 @@
 import axios from 'axios'
 
-import { fetchTokenKey, getApiKeys } from '@/features/keys/api'
-import { API_KEY_STATUS } from '@/features/keys/constants'
+import { fetchTokenKey } from '@/features/keys/api'
+import { api } from '@/lib/api'
 import { requireServerSuccess } from '@/lib/server-error-message'
 
 // Relay requests use the selected API key. The dashboard client overwrites
 // Authorization with the browser session's access token.
 const relayApi = axios.create({ withCredentials: false })
 
-export async function getGenerationKeys() {
-  const keys = []
-  for (let page = 1; ; page++) {
-    const response = requireServerSuccess(
-      await getApiKeys({ p: page, size: 100 })
-    )
-    const items = response.data?.items ?? []
-    keys.push(...items)
-    if (!items.length || keys.length >= (response.data?.total ?? 0)) break
-  }
-  const now = Date.now() / 1000
-  return keys.filter(
-    (key) =>
-      key.status === API_KEY_STATUS.ENABLED &&
-      (key.expired_time === -1 || key.expired_time > now)
+export interface GenerationOption {
+  id: number
+  name: string
+  models: string[]
+}
+
+export async function getGenerationOptions(
+  mode: 'image' | 'video',
+  signal: AbortSignal
+): Promise<GenerationOption[]> {
+  const response = requireServerSuccess(
+    (
+      await api.get<{ success: boolean; data: GenerationOption[] }>(
+        '/api/token/generation-options',
+        // React Query handles deduplication; remounts need a fresh abort signal.
+        { params: { type: mode }, signal, disableDuplicate: true }
+      )
+    ).data
   )
+  return response.data
 }
 
 export async function getGenerationKey(keyId: number) {
   const response = requireServerSuccess(await fetchTokenKey(keyId))
   if (!response.data?.key) throw new Error('Failed to load API keys')
   return `sk-${response.data.key.replace(/^sk-/, '')}`
-}
-
-export async function getGenerationModels(apiKey: string, signal: AbortSignal) {
-  const response = await relayApi.get<{ data: { id: string }[] }>(
-    '/v1/models',
-    {
-      headers: { Authorization: `Bearer ${apiKey}` },
-      signal,
-    }
-  )
-  return response.data.data.map((model) => ({
-    label: model.id,
-    value: model.id,
-  }))
 }
 
 export async function generateImages(

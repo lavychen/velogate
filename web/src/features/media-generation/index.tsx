@@ -1,5 +1,4 @@
 import { skipToken, useQuery } from '@tanstack/react-query'
-import { Link } from '@tanstack/react-router'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -8,7 +7,6 @@ import { ErrorState } from '@/components/error-state'
 import { SectionPageLayout } from '@/components/layout'
 import { LoadingState } from '@/components/loading-state'
 import { ModelSelector } from '@/components/model-group-selector'
-import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import {
   Field,
@@ -17,14 +15,10 @@ import {
   FieldLabel,
 } from '@/components/ui/field'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
-import { getPricing } from '@/features/pricing/api'
-import {
-  getServerErrorMessage,
-  requireServerSuccess,
-} from '@/lib/server-error-message'
+import { getServerErrorMessage } from '@/lib/server-error-message'
 import { useAuthStore } from '@/stores/auth-store'
 
-import { getGenerationKey, getGenerationKeys, getGenerationModels } from './api'
+import { getGenerationKey, getGenerationOptions } from './api'
 import { ImageGenerator } from './image-generator'
 import { VideoGenerator } from './video-generator'
 
@@ -34,8 +28,8 @@ export function MediaGeneration(props: { mode: 'image' | 'video' }) {
   const [keySelection, setKeySelection] = useState('')
   const [modelSelection, setModelSelection] = useState('')
   const keys = useQuery({
-    queryKey: ['media-generation-keys', userId],
-    queryFn: getGenerationKeys,
+    queryKey: ['media-generation-options', userId, props.mode],
+    queryFn: ({ signal }) => getGenerationOptions(props.mode, signal),
   })
   const selectedKey =
     keys.data?.find((key) => String(key.id) === keySelection) ?? keys.data?.[0]
@@ -44,38 +38,14 @@ export function MediaGeneration(props: { mode: 'image' | 'video' }) {
     queryKey: ['media-generation-key', userId, keyId],
     queryFn: keyId ? () => getGenerationKey(keyId) : skipToken,
     staleTime: 5 * 60 * 1000,
-    gcTime: 0,
+    gcTime: 5 * 60 * 1000,
     retry: false,
   })
   const apiKey = credential.data
-  const catalog = useQuery({
-    queryKey: ['pricing'],
-    queryFn: async () => requireServerSuccess(await getPricing()),
-  })
-  const models = useQuery({
-    queryKey: ['media-generation-models', userId, keyId],
-    queryFn: apiKey
-      ? ({ signal }) => getGenerationModels(apiKey, signal)
-      : skipToken,
-    retry: false,
-  })
-  const availableModels = (models.data ?? []).filter((model) => {
-    const metadata = catalog.data?.data.find(
-      (item) => item.model_name === model.value
-    )
-    const endpoint =
-      props.mode === 'image' ? 'image-generation' : 'openai-video'
-    if (metadata?.supported_endpoint_types?.length) {
-      return metadata.supported_endpoint_types.includes(endpoint)
-    }
-    return props.mode === 'image'
-      ? /image|dall-e|flux|imagen|sdxl|stable-diffusion|recraft|ideogram|cogview/i.test(
-          model.value
-        )
-      : /video|sora|veo|kling|seedance|wan|hailuo|runway|vidu|luma/i.test(
-          model.value
-        )
-  })
+  const availableModels = (selectedKey?.models ?? []).map((name) => ({
+    label: name,
+    value: name,
+  }))
   const selectedModel =
     availableModels.find((model) => model.value === modelSelection)?.value ??
     availableModels[0]?.value ??
@@ -83,14 +53,12 @@ export function MediaGeneration(props: { mode: 'image' | 'video' }) {
   const title =
     props.mode === 'image' ? t('Image generation') : t('Video generation')
 
-  const setupError =
-    keys.error ?? credential.error ?? models.error ?? catalog.error
+  const setupError = keys.error ?? credential.error
   const noKeys = keys.isSuccess && !keys.data.length
   const isReady =
     !setupError &&
     credential.isSuccess &&
-    models.isSuccess &&
-    catalog.isSuccess &&
+    keys.isSuccess &&
     Boolean(selectedModel)
   const connectionFields = (
     <FieldGroup>
@@ -121,7 +89,7 @@ export function MediaGeneration(props: { mode: 'image' | 'video' }) {
           selectedModel={selectedModel}
           models={availableModels}
           onModelChange={setModelSelection}
-          disabled={models.isFetching || !availableModels.length}
+          disabled={keys.isFetching || !availableModels.length}
           className='h-9 w-full justify-start px-3 sm:w-full [&>span]:block [&>span]:text-sm'
         />
       </Field>
@@ -130,26 +98,17 @@ export function MediaGeneration(props: { mode: 'image' | 'video' }) {
 
   let setupState
   if (noKeys) {
-    setupState = (
-      <EmptyState
-        title={t('No enabled API keys found. Create or enable one first.')}
-        action={<Button render={<Link to='/keys' />}>{t('API Keys')}</Button>}
-      />
-    )
+    setupState = <EmptyState title={t('No available models')} />
   } else if (setupError) {
     setupState = (
       <ErrorState
         description={getServerErrorMessage(setupError)}
         onRetry={() => {
-          void keys.refetch()
-          if (keyId) void credential.refetch()
-          if (apiKey) void models.refetch()
-          void catalog.refetch()
+          if (keys.isError) void keys.refetch()
+          if (keyId && credential.isError) void credential.refetch()
         }}
       />
     )
-  } else if (models.isSuccess && catalog.isSuccess && !availableModels.length) {
-    setupState = <EmptyState title={t('No available models')} />
   } else {
     setupState = <LoadingState />
   }

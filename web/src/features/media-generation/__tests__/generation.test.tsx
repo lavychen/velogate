@@ -1,10 +1,14 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import type { AxiosRequestConfig } from 'axios'
+import { StrictMode } from 'react'
 import { afterEach, expect, test, vi } from 'vitest'
 
 import { Input } from '@/components/ui/input'
+import { clearAuthenticatedClientState } from '@/lib/auth-session'
+import { useAuthStore } from '@/stores/auth-store'
 
+import { MediaGeneration } from '..'
 import { ImageGenerator } from '../image-generator'
 import { VideoGenerator } from '../video-generator'
 
@@ -26,7 +30,9 @@ afterEach(() => {
   clients.forEach((client) => client.clear())
   clients.length = 0
   adapter.mockReset()
+  useAuthStore.getState().auth.reset()
   vi.unstubAllGlobals()
+  vi.useRealTimers()
 })
 
 function renderGenerator(mode: 'image' | 'video', model?: string) {
@@ -54,6 +60,192 @@ function renderGenerator(mode: 'image' | 'video', model?: string) {
     </QueryClientProvider>
   )
 }
+
+function renderGenerationPage(mode: 'image' | 'video', client: QueryClient) {
+  return render(
+    <StrictMode>
+      <QueryClientProvider client={client}>
+        <MediaGeneration mode={mode} />
+      </QueryClientProvider>
+    </StrictMode>
+  )
+}
+
+function setupGenerationPage(
+  options?: { id: number; name: string; models: string[] }[]
+) {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  })
+  clients.push(client)
+  useAuthStore.getState().auth.setUser({
+    id: 1,
+    username: 'generator',
+    role: 1,
+  })
+  adapter.mockImplementation(async (config) => {
+    let data: unknown
+    if (config.url === '/api/token/generation-options') {
+      data = {
+        success: true,
+        data: options ?? [
+          {
+            id: 1,
+            name: 'First key',
+            models: [config.params.type === 'image' ? 'gpt-image-1' : 'sora-2'],
+          },
+          {
+            id: 2,
+            name: 'Second key',
+            models: [config.params.type === 'image' ? 'gpt-image-1' : 'sora-2'],
+          },
+        ],
+      }
+    } else if (/^\/api\/token\/\d+\/key$/.test(config.url)) {
+      data = {
+        success: true,
+        data: { key: `selected-${config.url.split('/')[3]}` },
+      }
+    } else {
+      throw new Error(`Unexpected request: ${config.url}`)
+    }
+    return { config, status: 200, headers: {}, data }
+  })
+  return client
+}
+
+test.each(['image', 'video'] as const)(
+  '%s generation opens under StrictMode, selects the first matching key and reads only that credential',
+  async (mode) => {
+    const model = mode === 'image' ? 'gpt-image-1' : 'sora-2'
+    const client = setupGenerationPage([
+      { id: 2, name: 'Matching key', models: [model] },
+      { id: 3, name: 'Another matching key', models: [model] },
+    ])
+    renderGenerationPage(mode, client)
+    expect(
+      await screen.findByRole('button', {
+        name: mode === 'image' ? 'Generate image' : 'Generate video',
+      })
+    ).toBeEnabled()
+    expect(screen.getByLabelText('API Key')).toHaveValue('2')
+    expect(adapter.mock.calls.map(([config]) => config.url)).toEqual([
+      '/api/token/generation-options',
+      '/api/token/2/key',
+    ])
+    expect(adapter.mock.calls[0][0].params).toEqual({ type: mode })
+  }
+)
+
+test('generation shows no available models only after the options query succeeds with an empty list', async () => {
+  const client = setupGenerationPage([])
+  renderGenerationPage('image', client)
+  expect(await screen.findByText('No available models')).toBeVisible()
+  expect(screen.getByLabelText('API Key')).toBeDisabled()
+  expect(adapter.mock.calls.map(([config]) => config.url)).toEqual([
+    '/api/token/generation-options',
+  ])
+})
+
+test('an options query failure shows an error and retry loads a matching key without reading unrelated credentials', async () => {
+  const client = setupGenerationPage()
+  adapter.mockRejectedValueOnce(new Error('Options unavailable'))
+  renderGenerationPage('video', client)
+  expect(await screen.findByText('Options unavailable')).toBeVisible()
+  expect(screen.queryByText('No available models')).not.toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
+  expect(
+    await screen.findByRole('button', { name: 'Generate video' })
+  ).toBeEnabled()
+  expect(
+    adapter.mock.calls
+      .filter(([config]) => config.method === 'post')
+      .map(([config]) => config.url)
+  ).toEqual(['/api/token/1/key'])
+})
+
+test.each(['image', 'video'] as const)(
+  '%s generation reuses each selected key when switching keys and reopening either generation page',
+  async (mode) => {
+    const client = setupGenerationPage()
+    const view = renderGenerationPage(mode, client)
+    const action = mode === 'image' ? 'Generate image' : 'Generate video'
+    expect(await screen.findByRole('button', { name: action })).toBeEnabled()
+
+    fireEvent.change(screen.getByLabelText('API Key'), {
+      target: { value: '2' },
+    })
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: action })).toBeEnabled()
+    )
+    fireEvent.change(screen.getByLabelText('API Key'), {
+      target: { value: '1' },
+    })
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: action })).toBeEnabled()
+    )
+    view.unmount()
+    const otherMode = mode === 'image' ? 'video' : 'image'
+    renderGenerationPage(otherMode, client)
+    expect(
+      await screen.findByRole('button', {
+        name: otherMode === 'image' ? 'Generate image' : 'Generate video',
+      })
+    ).toBeEnabled()
+
+    expect(
+      adapter.mock.calls
+        .filter(([config]) => config.method === 'post')
+        .map(([config]) => config.url)
+    ).toEqual(['/api/token/1/key', '/api/token/2/key'])
+  }
+)
+
+test('generation fetches a selected key again after its five minute freshness window expires', async () => {
+  vi.useFakeTimers({ toFake: ['Date'] })
+  const client = setupGenerationPage()
+  renderGenerationPage('image', client)
+  expect(
+    await screen.findByRole('button', { name: 'Generate image' })
+  ).toBeEnabled()
+  fireEvent.change(screen.getByLabelText('API Key'), { target: { value: '2' } })
+  await waitFor(() =>
+    expect(screen.getByRole('button', { name: 'Generate image' })).toBeEnabled()
+  )
+
+  vi.setSystemTime(Date.now() + 5 * 60 * 1000 + 1)
+  fireEvent.change(screen.getByLabelText('API Key'), { target: { value: '1' } })
+  await waitFor(() =>
+    expect(
+      adapter.mock.calls.filter(([config]) => config.url === '/api/token/1/key')
+    ).toHaveLength(2)
+  )
+  await waitFor(() =>
+    expect(screen.getByRole('button', { name: 'Generate image' })).toBeEnabled()
+  )
+})
+
+test('ending the authenticated session removes generation credentials before the same user returns', async () => {
+  const client = setupGenerationPage()
+  const view = renderGenerationPage('image', client)
+  expect(
+    await screen.findByRole('button', { name: 'Generate image' })
+  ).toBeEnabled()
+  view.unmount()
+
+  clearAuthenticatedClientState(client, false)
+  useAuthStore
+    .getState()
+    .auth.setUser({ id: 1, username: 'generator', role: 1 })
+  renderGenerationPage('video', client)
+  expect(
+    await screen.findByRole('button', { name: 'Generate video' })
+  ).toBeEnabled()
+
+  expect(
+    adapter.mock.calls.filter(([config]) => config.url === '/api/token/1/key')
+  ).toHaveLength(2)
+})
 
 test('an empty image prompt shows an accessible error without submitting a request', async () => {
   renderGenerator('image')

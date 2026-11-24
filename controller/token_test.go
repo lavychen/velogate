@@ -17,9 +17,11 @@ import (
 	"time"
 
 	"github.com/QuantumNous/new-api/common"
+	"github.com/QuantumNous/new-api/constant"
 	"github.com/QuantumNous/new-api/middleware"
 	"github.com/QuantumNous/new-api/model"
 	"github.com/QuantumNous/new-api/service"
+	"github.com/QuantumNous/new-api/setting"
 	"github.com/gin-gonic/gin"
 	"github.com/glebarez/sqlite"
 	"github.com/stretchr/testify/assert"
@@ -28,6 +30,111 @@ import (
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
+
+func TestTokenGenerationOptionsDatabaseMatrix(t *testing.T) {
+	for _, dialect := range []struct{ kind, env string }{{"sqlite", ""}, {"mysql", "TEST_MYSQL_DSN"}, {"postgres", "TEST_POSTGRES_DSN"}} {
+		t.Run(dialect.kind, func(t *testing.T) {
+			if dialect.env != "" && os.Getenv(dialect.env) == "" {
+				t.Skip("set " + dialect.env + " to run this database")
+			}
+			db := modelManagementDB(t, dialect.kind, os.Getenv(dialect.env))
+			require.NoError(t, db.AutoMigrate(&model.Token{}, &model.UserSession{}, &model.UserAccessToken{}))
+			withSelfUseModeEnabled(t)
+			configureTokenAutoGroupsTest(t, "5", `["default","vip"]`)
+			require.NoError(t, setting.UpdateUserUsableGroupsByJSONString(`{"default":"Default","vip":"VIP","auto":"Auto"}`))
+			t.Cleanup(model.InvalidatePricingCache)
+			user := &model.User{Username: "generation-owner", Password: "placeholder", Role: common.RoleCommonUser, Status: common.UserStatusEnabled, Group: "default", AuthVersion: 1, AffCode: "generation-owner"}
+			require.NoError(t, db.Create(user).Error)
+			_, jwt := createAccessTokenTestSession(t, user.Id, "generation-session")
+			readToken, _ := createScopedAccessToken(t, user.Id, time.Now().Unix()+3600, "api_key:read")
+			profileToken, _ := createScopedAccessToken(t, user.Id, time.Now().Unix()+3600, "profile:read")
+			channel := &model.Channel{Type: constant.ChannelTypeOpenAI, Key: "upstream-secret", Status: common.ChannelStatusEnabled, Name: "generation", Group: "default,vip", Models: "gpt-image-1,sora-2,opaque-art,chat-only"}
+			require.NoError(t, db.Create(channel).Error)
+			require.NoError(t, db.Create(&[]model.Ability{
+				{Group: "default", Model: "gpt-image-1", ChannelId: channel.Id, Enabled: true},
+				{Group: "default", Model: "sora-2", ChannelId: channel.Id, Enabled: true},
+				{Group: "default", Model: "chat-only", ChannelId: channel.Id, Enabled: true},
+				{Group: "vip", Model: "opaque-art", ChannelId: channel.Id, Enabled: true},
+			}).Error)
+			require.NoError(t, db.Create(&[]model.Model{
+				{ModelName: "opaque-art", Endpoints: `{"image-generation":"/v1/images/generations"}`, Status: 1},
+				{ModelName: "sora-2", Endpoints: `{"openai-video":"/v1/videos"}`, Status: 1},
+			}).Error)
+			blockedIP := "198.51.100.0/24"
+			tokens := []model.Token{
+				{Id: 1, UserId: user.Id, Name: "Video key", ModelLimitsEnabled: true, ModelLimits: "sora-2"},
+				{Id: 2, UserId: user.Id, Name: "Image key", ModelLimitsEnabled: true, ModelLimits: "gpt-image-1"},
+				{Id: 3, UserId: user.Id + 1, Name: "Other user's key"},
+				{Id: 4, UserId: user.Id, Name: "Chat key", ModelLimitsEnabled: true, ModelLimits: "chat-only"},
+				{Id: 5, UserId: user.Id, Name: "Empty model limits", ModelLimitsEnabled: true},
+				{Id: 6, UserId: user.Id, Name: "Unauthorized group", Group: "private"},
+				{Id: 7, UserId: user.Id, Name: "Auto image", Group: "auto", AutoGroups: `["private","vip"]`},
+				{Id: 8, UserId: user.Id, Name: "Auto removed", Group: "auto", AutoGroups: `["private"]`},
+				{Id: 9, UserId: user.Id, Name: "IP restricted", AllowIps: &blockedIP},
+				{Id: 10, UserId: user.Id, Name: "Disabled"},
+				{Id: 11, UserId: user.Id, Name: "Expired"},
+				{Id: 12, UserId: user.Id, Name: "Exhausted"},
+				{Id: 13, UserId: user.Id, Name: "Inherited Auto", Group: "auto", AutoGroups: `[]`},
+			}
+			for i := range tokens {
+				tokens[i].Key = fmt.Sprintf("credential-secret-%d", tokens[i].Id)
+				tokens[i].Status = common.TokenStatusEnabled
+				tokens[i].ExpiredTime = -1
+				tokens[i].UnlimitedQuota = true
+			}
+			tokens[9].Status = common.TokenStatusDisabled
+			tokens[10].ExpiredTime = time.Now().Unix() - 1
+			tokens[11].UnlimitedQuota = false
+			require.NoError(t, db.Create(&tokens).Error)
+			model.InvalidatePricingCache()
+			router := gin.New()
+			require.NoError(t, router.SetTrustedProxies(nil))
+			router.GET("/api/token/generation-options", middleware.UserAuth(), middleware.DisableCache(), GetTokenGenerationOptions)
+			for _, tc := range []struct {
+				name, target, credential string
+				status                   int
+				want                     []tokenGenerationOption
+			}{
+				{name: "image", target: "?type=image", credential: jwt, status: 200, want: []tokenGenerationOption{{ID: 13, Name: "Inherited Auto", Models: []string{"gpt-image-1", "opaque-art"}}, {ID: 7, Name: "Auto image", Models: []string{"opaque-art"}}, {ID: 2, Name: "Image key", Models: []string{"gpt-image-1"}}}},
+				{name: "video", target: "?type=video", credential: jwt, status: 200, want: []tokenGenerationOption{{ID: 13, Name: "Inherited Auto", Models: []string{"sora-2"}}, {ID: 1, Name: "Video key", Models: []string{"sora-2"}}}},
+				{name: "read scope without reveal scope", target: "?type=video", credential: readToken, status: 200, want: []tokenGenerationOption{{ID: 13, Name: "Inherited Auto", Models: []string{"sora-2"}}, {ID: 1, Name: "Video key", Models: []string{"sora-2"}}}},
+				{name: "missing read scope", target: "?type=image", credential: profileToken, status: 403},
+				{name: "invalid type", target: "?type=chat", credential: jwt, status: 400},
+				{name: "missing type", credential: jwt, status: 400},
+				{name: "anonymous", target: "?type=image", status: 401},
+			} {
+				t.Run(tc.name, func(t *testing.T) {
+					request := httptest.NewRequest(http.MethodGet, "/api/token/generation-options"+tc.target, nil)
+					request.RemoteAddr = "192.0.2.10:1234"
+					if tc.credential != "" {
+						request.Header.Set("Authorization", "Bearer "+tc.credential)
+					}
+					recorder := httptest.NewRecorder()
+					router.ServeHTTP(recorder, request)
+					require.Equal(t, tc.status, recorder.Code, recorder.Body.String())
+					assert.NotContains(t, recorder.Body.String(), "credential-secret")
+					assert.NotContains(t, recorder.Body.String(), "upstream-secret")
+					if tc.want == nil {
+						return
+					}
+					assert.Contains(t, recorder.Header().Get("Cache-Control"), "no-store")
+					var response struct {
+						Success bool                    `json:"success"`
+						Data    []tokenGenerationOption `json:"data"`
+					}
+					require.NoError(t, common.Unmarshal(recorder.Body.Bytes(), &response))
+					require.True(t, response.Success)
+					assert.Equal(t, tc.want, response.Data)
+				})
+			}
+			// A successful empty result must be [], not a failure or null.
+			require.NoError(t, db.Model(&model.Token{}).Where("user_id = ?", user.Id).Update("status", common.TokenStatusDisabled).Error)
+			ctx, recorder := newAuthenticatedContext(t, http.MethodGet, "/api/token/generation-options?type=image", nil, user.Id)
+			GetTokenGenerationOptions(ctx)
+			assert.JSONEq(t, `{"success":true,"message":"","data":[]}`, recorder.Body.String())
+		})
+	}
+}
 
 type tokenAPIResponse struct {
 	Success bool            `json:"success"`

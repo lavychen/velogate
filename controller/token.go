@@ -1,7 +1,9 @@
 package controller
 
 import (
+	"net"
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -13,6 +15,7 @@ import (
 	"github.com/QuantumNous/new-api/service"
 	"github.com/QuantumNous/new-api/setting"
 	"github.com/QuantumNous/new-api/setting/operation_setting"
+	"github.com/QuantumNous/new-api/setting/ratio_setting"
 
 	"github.com/gin-gonic/gin"
 	"github.com/shopspring/decimal"
@@ -142,6 +145,95 @@ func GetAllTokens(c *gin.Context) {
 	pageInfo.SetTotal(int(total))
 	pageInfo.SetItems(buildMaskedTokenResponses(tokens))
 	common.ApiSuccess(c, pageInfo)
+}
+
+type tokenGenerationOption struct {
+	ID     int      `json:"id"`
+	Name   string   `json:"name"`
+	Models []string `json:"models"`
+}
+
+func GetTokenGenerationOptions(c *gin.Context) {
+	var endpoint constant.EndpointType
+	switch c.Query("type") {
+	case "image":
+		endpoint = constant.EndpointTypeImageGeneration
+	case "video":
+		endpoint = constant.EndpointTypeOpenAIVideo
+	default:
+		common.ApiErrorStatus(c, http.StatusBadRequest, common.NewMessage("Invalid parameters"))
+		return
+	}
+	user, err := model.GetUserCache(c.GetInt("id"))
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	tokens, err := model.GetAllUserTokens(user.Id, 0, -1)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	// Refresh the endpoint metadata before selecting models, as /api/pricing does.
+	model.GetPricing()
+	acceptUnsetRatioModel := operation_setting.SelfUseModeEnabled || user.GetSetting().AcceptUnsetRatioModel
+	usableGroups := service.GetUserUsableGroups(user.Group)
+	options := make([]tokenGenerationOption, 0)
+	now := common.GetTimestamp()
+	clientIP := net.ParseIP(c.ClientIP())
+	for _, token := range tokens {
+		if token.Status != common.TokenStatusEnabled ||
+			(token.ExpiredTime != -1 && token.ExpiredTime < now) ||
+			(!token.UnlimitedQuota && token.RemainQuota <= 0) {
+			continue
+		}
+		if limits := token.GetIpLimits(); len(limits) > 0 && (clientIP == nil || !common.IsIpInCIDRList(clientIP, limits)) {
+			continue
+		}
+		if err := model.ValidateEnterpriseTokenScope(token); err != nil {
+			continue
+		}
+		groups := []string{user.Group}
+		if token.Group != "" {
+			if _, ok := usableGroups[token.Group]; !ok {
+				continue
+			}
+			if token.Group == "auto" {
+				groups = service.GetUserAutoGroup(user.Group)
+				if token.AutoGroups != "" {
+					autoGroups, err := token.GetAutoGroups()
+					if err != nil {
+						common.ApiError(c, err)
+						return
+					}
+					if len(autoGroups) > 0 {
+						groups = service.FilterUserTokenAutoGroups(user.Group, autoGroups)
+					}
+				}
+			} else {
+				if !ratio_setting.ContainsGroupRatio(token.Group) {
+					continue
+				}
+				groups = []string{token.Group}
+			}
+		}
+		var modelLimits map[string]bool
+		if token.ModelLimitsEnabled {
+			modelLimits = token.GetModelLimitsMap()
+		}
+		models := make([]string, 0)
+		for _, name := range availableModelNames(groups, modelLimits, acceptUnsetRatioModel) {
+			if slices.Contains(model.GetModelSupportEndpointTypes(name), endpoint) {
+				models = append(models, name)
+			}
+		}
+		if len(models) == 0 {
+			continue
+		}
+		slices.Sort(models)
+		options = append(options, tokenGenerationOption{ID: token.Id, Name: token.Name, Models: models})
+	}
+	common.ApiSuccess(c, options)
 }
 
 func SearchTokens(c *gin.Context) {
