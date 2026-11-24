@@ -70,7 +70,8 @@ export function HomeHeader(props: HomeHeaderProps) {
         <Link
           to={props.homeUrl ?? '/'}
           hash={props.homeUrl ? undefined : 'top'}
-          className='flex max-w-56 min-w-0 items-center xl:max-w-48'
+          aria-label={t('Go to home')}
+          className='flex max-w-56 min-w-0 cursor-pointer items-center select-none xl:max-w-48'
         >
           {props.brand ?? <HomeBrand name={props.name} />}
         </Link>

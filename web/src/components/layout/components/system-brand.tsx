@@ -45,7 +45,7 @@ type SystemBrandProps = {
  * System brand component
  * Displays current system logo + name.
  * - inline: compact pill in the top app bar; clicking navigates to home (/)
- * - sidebar: stacked card in the sidebar header (display only)
+ * - sidebar: stacked card in the sidebar header; clicking navigates to home (/)
  */
 export function SystemBrand(props: SystemBrandProps) {
   const { t } = useTranslation()
@@ -61,7 +61,7 @@ export function SystemBrand(props: SystemBrandProps) {
         to='/'
         aria-label={t('Go to home')}
         className={cn(
-          'text-foreground inline-flex h-7 min-w-0 items-center gap-1.5 rounded-md px-1.5 text-sm font-medium transition-colors outline-none select-none',
+          'text-foreground inline-flex h-7 min-w-0 cursor-pointer items-center gap-1.5 rounded-md px-1.5 text-sm font-medium transition-colors outline-none select-none',
           'hover:bg-accent focus-visible:ring-ring/40 focus-visible:ring-2'
         )}
       >
@@ -82,8 +82,8 @@ export function SystemBrand(props: SystemBrandProps) {
       <SidebarMenuItem>
         <SidebarMenuButton
           size='lg'
-          className='hover:text-sidebar-foreground active:text-sidebar-foreground cursor-default hover:bg-transparent active:bg-transparent'
-          render={<div />}
+          className='hover:text-sidebar-foreground active:text-sidebar-foreground cursor-pointer select-none hover:bg-transparent active:bg-transparent'
+          render={<Link to='/' aria-label={t('Go to home')} />}
         >
           <SystemBrandMark logo={logo} name='VeloGate' />
         </SidebarMenuButton>

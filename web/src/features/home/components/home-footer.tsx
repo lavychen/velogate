@@ -116,7 +116,7 @@ export function HomeFooter(props: {
         </div>
         <div className='mt-6 flex flex-col items-center justify-between gap-3 text-xs text-slate-400 sm:flex-row'>
           <span>
-            © {new Date().getFullYear()} {props.name} MaaS · Powered by New API
+            © {new Date().getFullYear()} {props.name} MaaS
           </span>
           <span className='font-mono'>{props.icp}</span>
         </div>

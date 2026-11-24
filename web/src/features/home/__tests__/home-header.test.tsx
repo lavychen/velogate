@@ -259,6 +259,23 @@ test('public pages use the home header layout and return to the home route throu
   expect(router.state.location.pathname).toBe('/')
 })
 
+test.each([false, true])(
+  'the brand on a public page (%s) uses a pointer without text selection and supports keyboard navigation home',
+  async (publicPage) => {
+    const router = await renderHeader(undefined, undefined, publicPage)
+    await act(async () => {
+      await router.navigate({ to: '/about' })
+    })
+    const brand = screen.getByRole('link', { name: 'Go to home' })
+    expect(brand).toHaveClass('cursor-pointer', 'select-none')
+    const user = userEvent.setup()
+    await user.tab()
+    expect(brand).toHaveFocus()
+    await user.keyboard('{Enter}')
+    expect(router.state.location.pathname).toBe('/')
+  }
+)
+
 test('public pages keep backend-disabled navigation hidden on desktop and mobile', async () => {
   await renderHeader(
     {
