@@ -94,7 +94,7 @@ async function renderNavigation(path: string, role = 100, modules = '') {
 test('audit page selects its own sidebar destination without showing call log tabs', async () => {
   await renderNavigation('/usage-logs/audit')
   const sidebar = screen.getByRole('navigation', { name: 'Primary' })
-  expect(within(sidebar).getAllByRole('link')).toHaveLength(10)
+  expect(within(sidebar).getAllByRole('link')).toHaveLength(12)
   expect(
     within(sidebar).queryByRole('button', { expanded: false })
   ).not.toBeInTheDocument()
@@ -138,7 +138,7 @@ test('settings category selection navigates to its first real page and leaves si
     within(screen.getByRole('navigation', { name: 'Primary' })).getAllByRole(
       'link'
     )
-  ).toHaveLength(10)
+  ).toHaveLength(12)
   await user.selectOptions(
     screen.getByRole('combobox', { name: 'Settings category' }),
     'Operations'
@@ -160,7 +160,7 @@ test('settings category selection navigates to its first real page and leaves si
 test('ordinary users cannot discover admin pages through merged wallet and dashboard navigation', async () => {
   await renderNavigation('/wallet', 1)
   const sidebar = screen.getByRole('navigation', { name: 'Primary' })
-  expect(within(sidebar).getAllByRole('link')).toHaveLength(7)
+  expect(within(sidebar).getAllByRole('link')).toHaveLength(9)
   expect(
     screen.queryByRole('link', { name: 'Redemption Codes' })
   ).not.toBeInTheDocument()
@@ -169,5 +169,22 @@ test('ordinary users cannot discover admin pages through merged wallet and dashb
   ).not.toBeInTheDocument()
   expect(
     screen.queryByRole('link', { name: 'User management' })
+  ).not.toBeInTheDocument()
+})
+
+test('account settings groups profile and security and respects their individual visibility', async () => {
+  await renderNavigation(
+    '/profile',
+    1,
+    JSON.stringify({ personal: { enabled: true, security: false } })
+  )
+  const group = screen.getByText('Account settings').parentElement
+  expect(group).not.toBeNull()
+  if (!group) throw new Error('Account settings group is missing')
+  expect(
+    within(group).getByRole('link', { name: 'Account profile' })
+  ).toHaveAttribute('aria-current', 'page')
+  expect(
+    within(group).queryByRole('link', { name: 'Security & Access' })
   ).not.toBeInTheDocument()
 })

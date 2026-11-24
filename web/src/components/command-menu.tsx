@@ -33,7 +33,6 @@ import {
 } from '@/components/ui/command'
 import { useSearch } from '@/context/search-provider'
 import { useTheme } from '@/context/theme-provider'
-import { useIsSidebarModuleVisible } from '@/hooks/use-sidebar-config'
 import { useSidebarView } from '@/hooks/use-sidebar-view'
 
 import { ScrollArea } from './ui/scroll-area'
@@ -46,8 +45,6 @@ export function CommandMenu() {
   // Offer the same pages as the sidebar, so search never lists pages the
   // user's role or the sidebar settings hide.
   const { navGroups } = useSidebarView()
-  const profileVisible = useIsSidebarModuleVisible('/profile')
-  const securityVisible = useIsSidebarModuleVisible('/security')
 
   const runCommand = React.useCallback(
     (command: () => unknown) => {
@@ -108,28 +105,6 @@ export function CommandMenu() {
                   })}
               </CommandGroup>
             ))}
-            <CommandGroup heading={t('Profile')}>
-              {profileVisible && (
-                <CommandItem
-                  value='profile'
-                  onSelect={() =>
-                    runCommand(() => navigate({ to: '/profile' }))
-                  }
-                >
-                  {t('Profile')}
-                </CommandItem>
-              )}
-              {securityVisible && (
-                <CommandItem
-                  value='security'
-                  onSelect={() =>
-                    runCommand(() => navigate({ to: '/security' }))
-                  }
-                >
-                  {t('Security & Access')}
-                </CommandItem>
-              )}
-            </CommandGroup>
             <CommandSeparator />
             <CommandGroup heading={t('Theme')}>
               <CommandItem onSelect={() => runCommand(() => setTheme('light'))}>

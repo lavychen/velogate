@@ -26,6 +26,7 @@ import {
   Settings,
   Sparkles,
   Users,
+  UserRound,
   Wallet,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -146,6 +147,18 @@ export function useSidebarData(badges: SidebarBadges = {}): SidebarData {
                 requiredRole: ROLE.ADMIN,
               },
             ],
+          },
+        ],
+      },
+      {
+        id: 'account',
+        title: t('Account settings'),
+        items: [
+          { title: t('Account profile'), url: '/profile', icon: UserRound },
+          {
+            title: t('Security & Access'),
+            url: '/security',
+            icon: ShieldCheck,
           },
         ],
       },

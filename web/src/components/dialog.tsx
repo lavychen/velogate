@@ -37,6 +37,7 @@ type DialogProps = React.ComponentProps<typeof DialogRoot> & {
   footer?: React.ReactNode
   contentHeight?: React.CSSProperties['height']
   contentClassName?: string
+  overlayClassName?: string
   headerClassName?: string
   titleClassName?: string
   descriptionClassName?: string
@@ -57,6 +58,7 @@ export function Dialog({
   footer,
   contentHeight = 'auto',
   contentClassName,
+  overlayClassName,
   headerClassName,
   titleClassName,
   descriptionClassName,
@@ -70,6 +72,7 @@ export function Dialog({
     <DialogRoot {...dialogProps}>
       {trigger ? <DialogTrigger render={trigger} /> : null}
       <DialogContent
+        overlayClassName={overlayClassName}
         className={cn(
           'flex w-full flex-col gap-4 overflow-x-hidden overflow-y-auto p-4 sm:max-w-2xl sm:p-6',
           contentClassName,

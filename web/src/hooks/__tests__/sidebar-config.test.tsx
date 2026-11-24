@@ -99,9 +99,11 @@ function sidebarFor(admin?: object, user?: object, canConfigure = true) {
 }
 
 describe('flat console navigation and legacy visibility', () => {
-  it('groups all destinations into exactly three groups and ten flat links', () => {
+  it('groups all destinations into four groups with account settings and twelve flat links', () => {
     const { result } = sidebarFor()
-    expect(result.current.map((group) => group.items.length)).toEqual([4, 3, 3])
+    expect(result.current.map((group) => group.items.length)).toEqual([
+      4, 3, 2, 3,
+    ])
     expect(
       result.current
         .flatMap((group) => group.items)
@@ -123,6 +125,8 @@ describe('flat console navigation and legacy visibility', () => {
         '/enterprise/departments',
         '/keys',
         '/wallet',
+        '/profile',
+        '/security',
         '/channels',
         '/models/deployments',
         '/redemption-codes',

@@ -126,7 +126,7 @@ export function SidebarModulesCard() {
         },
         {
           key: 'personal',
-          title: t('Personal Settings'),
+          title: t('Account profile'),
           description: t('Personal info settings'),
         },
         {

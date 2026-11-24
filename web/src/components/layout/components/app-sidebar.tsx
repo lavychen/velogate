@@ -19,7 +19,7 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { useTranslation } from 'react-i18next'
 
-import { ProfileDropdown } from '@/components/profile-dropdown'
+import { AccountSummary } from '@/components/account-summary'
 import {
   Sidebar,
   SidebarContent,
@@ -29,9 +29,7 @@ import {
 } from '@/components/ui/sidebar'
 import { useLayout } from '@/context/layout-provider'
 import { useSidebarView } from '@/hooks/use-sidebar-view'
-import { useUserDisplay } from '@/hooks/use-user-display'
 import { MOTION_TRANSITION, MOTION_VARIANTS } from '@/lib/motion'
-import { useAuthStore } from '@/stores/auth-store'
 
 import { NavGroup } from './nav-group'
 import { SystemBrand } from './system-brand'
@@ -42,8 +40,6 @@ export function AppSidebar() {
   const { collapsible, variant } = useLayout()
   const { key, navGroups } = useSidebarView()
   const shouldReduce = useReducedMotion()
-  const user = useAuthStore((s) => s.auth.user)
-  const { displayName, roleLabel } = useUserDisplay(user)
 
   return (
     <Sidebar collapsible={collapsible} variant={variant}>
@@ -71,16 +67,8 @@ export function AppSidebar() {
         </AnimatePresence>
       </SidebarContent>
 
-      <SidebarFooter className='border-t p-4 group-data-[collapsible=icon]:p-2.5'>
-        <div className='flex min-w-0 items-center gap-3'>
-          <ProfileDropdown />
-          <div className='min-w-0 group-data-[collapsible=icon]:hidden'>
-            <p className='truncate text-sm font-semibold'>{displayName}</p>
-            <p className='text-muted-foreground truncate text-xs'>
-              {roleLabel}
-            </p>
-          </div>
-        </div>
+      <SidebarFooter className='border-t p-2 group-data-[collapsible=icon]:p-1'>
+        <AccountSummary />
       </SidebarFooter>
 
       <SidebarRail />

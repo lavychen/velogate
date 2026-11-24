@@ -105,7 +105,7 @@ export function ProfileDropdown() {
 
           <DropdownMenuItem onClick={() => navigate({ to: '/profile' })}>
             <User className='size-4' />
-            {t('Profile')}
+            {t('Account profile')}
           </DropdownMenuItem>
 
           {isSecurityVisible && (
