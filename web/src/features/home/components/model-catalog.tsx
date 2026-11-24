@@ -190,7 +190,7 @@ export function ModelCatalog(props: {
         <div className='mb-8 flex flex-wrap items-end justify-between gap-5'>
           <div>
             <p className='mb-3 font-mono text-xs font-semibold tracking-[0.16em] text-indigo-600 uppercase dark:text-indigo-400'>
-              {t('Model Square')}
+              {t('Model Marketplace')}
             </p>
             <h2 className='text-3xl font-bold tracking-tight sm:text-4xl'>
               {t('Transparent model pricing')}

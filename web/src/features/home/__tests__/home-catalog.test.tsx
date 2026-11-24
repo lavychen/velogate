@@ -158,7 +158,7 @@ describe('home catalog', () => {
     expect(await screen.findByText('No Models Found')).toBeVisible()
   })
 
-  it('does not request pricing or performance when the model square requires sign in', async () => {
+  it('does not request pricing or performance when the model marketplace requires sign in', async () => {
     client.setQueryData(['status'], {
       HeaderNavModules: { pricing: { enabled: true, requireAuth: true } },
     })

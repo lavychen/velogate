@@ -62,7 +62,7 @@ export function HomeFooter(props: {
             <p className='font-semibold'>{t('Product')}</p>
             <ul className='home-footer-links space-y-2'>
               <li>
-                <a href='#models'>{t('Model Square')}</a>
+                <a href='#models'>{t('Model Marketplace')}</a>
               </li>
               <li>
                 <a href='#architecture'>{t('Architecture')}</a>

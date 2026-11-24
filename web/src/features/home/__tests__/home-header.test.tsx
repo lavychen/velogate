@@ -177,7 +177,9 @@ test('preserves configured external documentation links in desktop and mobile na
   )
   for (const name of ['Main navigation', 'Mobile navigation']) {
     const navigation = screen.getByRole('navigation', { name })
-    const link = within(navigation).getByRole('link', { name: 'Docs' })
+    const link = within(navigation).getByRole('link', {
+      name: 'Developer Docs',
+    })
     expect(within(navigation).getAllByRole('link')).toHaveLength(1)
     expect(link).toHaveAttribute('href', 'https://docs.example.com/guide')
     expect(link).toHaveAttribute('target', '_blank')
@@ -331,7 +333,7 @@ test('public page mobile navigation keeps the sign-in prompt for restricted modu
   await userEvent.click(
     within(
       screen.getByRole('navigation', { name: 'Mobile navigation' })
-    ).getByRole('link', { name: 'Model Square' })
+    ).getByRole('link', { name: 'Model Marketplace' })
   )
   expect(
     await screen.findByRole('dialog', { name: 'Sign in required' })

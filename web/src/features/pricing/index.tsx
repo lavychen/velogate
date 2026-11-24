@@ -179,7 +179,7 @@ export function Pricing() {
               <div className='min-w-0'>
                 <div className='flex flex-wrap items-center gap-3'>
                   <h1 className='text-2xl leading-tight font-bold tracking-tight sm:text-[28px]'>
-                    {t('Model Square')}
+                    {t('Model Marketplace')}
                   </h1>
                   <span
                     className='bg-card inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs'

@@ -542,7 +542,7 @@ export function ModelMutateDrawer(props: {
                           <FormItem className={sideDrawerSwitchItemClassName()}>
                             <div className='flex flex-col gap-0.5'>
                               <FormLabel className='text-base'>
-                                {t('Model square visibility')}
+                                {t('Model marketplace visibility')}
                               </FormLabel>
                               <FormDescription>
                                 {t(
