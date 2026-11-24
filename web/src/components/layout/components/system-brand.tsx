@@ -19,7 +19,6 @@ For commercial licensing, please contact support@quantumnous.com
 import { Link } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 
-import { Badge } from '@/components/ui/badge'
 import {
   SidebarMenu,
   SidebarMenuButton,
@@ -29,6 +28,8 @@ import { useStatus } from '@/hooks/use-status'
 import { useSystemConfig } from '@/hooks/use-system-config'
 import { DEFAULT_SYSTEM_NAME } from '@/lib/constants'
 import { cn } from '@/lib/utils'
+
+import { SystemBrandMark } from './system-brand-mark'
 
 type SystemBrandProps = {
   defaultName?: string
@@ -84,24 +85,7 @@ export function SystemBrand(props: SystemBrandProps) {
           className='hover:text-sidebar-foreground active:text-sidebar-foreground cursor-default hover:bg-transparent active:bg-transparent'
           render={<div />}
         >
-          <div className='flex aspect-square size-8 items-center justify-center overflow-hidden rounded-lg'>
-            <img
-              src={logo}
-              alt={t('Logo')}
-              className='size-full rounded-lg object-cover'
-            />
-          </div>
-          <div className='flex min-w-0 flex-1 items-center gap-2 group-data-[collapsible=icon]:hidden'>
-            <span className='text-foreground truncate text-base font-bold'>
-              VeloGate
-            </span>
-            <Badge
-              variant='secondary'
-              className='text-muted-foreground rounded-md px-1.5 text-[10px] font-normal'
-            >
-              MaaS
-            </Badge>
-          </div>
+          <SystemBrandMark logo={logo} name='VeloGate' />
         </SidebarMenuButton>
       </SidebarMenuItem>
     </SidebarMenu>

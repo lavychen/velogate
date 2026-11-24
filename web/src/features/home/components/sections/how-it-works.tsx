@@ -16,72 +16,118 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { Settings, Zap, BarChart3 } from 'lucide-react'
+import { Link } from '@tanstack/react-router'
+import { ArrowUpRight, Check } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
-import { AnimateInView } from '@/components/animate-in-view'
+import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 
 export function HowItWorks() {
   const { t } = useTranslation()
-
-  const steps = [
+  const plans = [
     {
-      num: '1',
-      title: t('Configure'),
-      desc: t(
-        'Add your API keys, set up channels and configure access permissions'
-      ),
-      icon: <Settings className='size-6' strokeWidth={1.5} />,
+      title: t('Pay as you go'),
+      caption: t('Wallet'),
+      description: t('Pay-as-you-go with real-time usage monitoring'),
+      href: '/wallet',
+      featured: false,
+      items: [t('API Keys'), t('Usage Logs'), t('Redemption Codes')],
     },
     {
-      num: '2',
-      title: t('Connect'),
-      desc: t(
-        'Connect through OpenAI, Claude, Gemini, and other compatible API routes'
+      title: t('Enterprise'),
+      caption: t('Team Collaboration'),
+      description: t(
+        'Multi-user management with flexible permission allocation'
       ),
-      icon: <Zap className='size-6' strokeWidth={1.5} />,
+      href: '/enterprise',
+      featured: true,
+      items: [t('Departments'), t('Budgets'), t('Members')],
     },
     {
-      num: '3',
-      title: t('Monitor'),
-      desc: t('Track usage, costs and performance with real-time analytics'),
-      icon: <BarChart3 className='size-6' strokeWidth={1.5} />,
+      title: t('Subscriptions'),
+      caption: t('Subscription Plans'),
+      description: t(
+        'Choose a plan from the options configured for this site.'
+      ),
+      href: '/subscriptions',
+      featured: false,
+      items: [t('Subscription Plans'), t('Usage'), t('Billing')],
     },
   ]
-
   return (
-    <section className='border-border/40 relative z-10 border-t px-6 py-24 md:py-32'>
-      <div className='mx-auto max-w-6xl'>
-        <AnimateInView className='mb-16 text-center md:mb-20'>
-          <p className='text-muted-foreground mb-3 text-xs font-medium tracking-widest uppercase'>
-            {t('How It Works')}
+    <section
+      id='plans'
+      className='bg-background scroll-mt-20 border-t px-6 py-20 lg:py-24'
+    >
+      <div className='mx-auto max-w-[1240px]'>
+        <div className='mb-12 text-center'>
+          <p className='mb-3 font-mono text-xs font-semibold tracking-[0.16em] text-orange-600 uppercase dark:text-orange-400'>
+            {t('Flexible access')}
           </p>
-          <h2 className='text-2xl font-bold tracking-tight md:text-3xl'>
-            {t('Three steps to get started')}
+          <h2 className='text-3xl font-bold tracking-tight sm:text-4xl'>
+            {t('Start small. Scale with your team.')}
           </h2>
-        </AnimateInView>
-
-        <div className='grid gap-8 md:grid-cols-3 md:gap-12'>
-          {steps.map((step, i) => (
-            <AnimateInView
-              key={step.num}
-              delay={i * 150}
-              animation='fade-up'
-              className='relative flex flex-col items-center text-center'
+        </div>
+        <div className='grid gap-6 lg:grid-cols-3'>
+          {plans.map((plan) => (
+            <article
+              key={plan.href}
+              className={cn(
+                'flex flex-col rounded-2xl border p-8',
+                plan.featured
+                  ? 'border-indigo-900 bg-gradient-to-br from-[#121629] via-[#1b1f3b] to-[#0f1322] text-white shadow-xl shadow-indigo-950/10'
+                  : 'home-surface'
+              )}
             >
-              <div className='relative mb-6'>
-                <div className='text-muted-foreground border-border/50 bg-muted/30 flex size-16 items-center justify-center rounded-2xl border transition-colors'>
-                  {step.icon}
-                </div>
-                <div className='bg-foreground text-background absolute -top-2 -right-2 flex size-6 items-center justify-center rounded-full text-xs font-bold'>
-                  {step.num}
-                </div>
-              </div>
-              <h3 className='mb-2 text-base font-semibold'>{step.title}</h3>
-              <p className='text-muted-foreground max-w-[240px] text-sm leading-relaxed'>
-                {step.desc}
+              <h3
+                className={cn(
+                  'text-sm font-semibold',
+                  plan.featured && 'text-indigo-300'
+                )}
+              >
+                {plan.title}
+              </h3>
+              <p className='mt-5 text-2xl font-bold tracking-tight'>
+                {plan.caption}
               </p>
-            </AnimateInView>
+              <p
+                className={cn(
+                  'mt-3 text-sm leading-relaxed',
+                  plan.featured ? 'text-slate-300' : 'text-muted-foreground'
+                )}
+              >
+                {plan.description}
+              </p>
+              <ul className='mt-8 mb-10 space-y-3'>
+                {plan.items.map((item) => (
+                  <li key={item} className='flex items-center gap-2.5 text-sm'>
+                    <Check
+                      aria-hidden='true'
+                      className={cn(
+                        'size-4 shrink-0',
+                        plan.featured
+                          ? 'text-orange-400'
+                          : 'text-emerald-600 dark:text-emerald-400'
+                      )}
+                    />
+                    {item}
+                  </li>
+                ))}
+              </ul>
+              <Button
+                variant={plan.featured ? 'default' : 'outline'}
+                className={cn(
+                  'mt-auto h-11 w-full rounded-xl',
+                  plan.featured &&
+                    'bg-indigo-600 text-white hover:bg-indigo-500'
+                )}
+                render={<Link to={plan.href} />}
+              >
+                {t('Get Started')}
+                <ArrowUpRight aria-hidden='true' className='size-4' />
+              </Button>
+            </article>
           ))}
         </div>
       </div>

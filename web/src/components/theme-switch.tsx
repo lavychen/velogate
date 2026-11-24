@@ -30,9 +30,11 @@ import {
 import { useTheme } from '@/context/theme-provider'
 import { cn } from '@/lib/utils'
 
-export function ThemeSwitch() {
+export function ThemeSwitch(
+  props: { presentation?: 'dropdown' | 'toggle'; className?: string } = {}
+) {
   const { t } = useTranslation()
-  const { theme, setTheme } = useTheme()
+  const { theme, resolvedTheme, setTheme } = useTheme()
 
   /* Update theme-color meta tag
    * when theme is updated */
@@ -41,6 +43,24 @@ export function ThemeSwitch() {
     const metaThemeColor = document.querySelector("meta[name='theme-color']")
     if (metaThemeColor) metaThemeColor.setAttribute('content', themeColor)
   }, [theme])
+
+  if (props.presentation === 'toggle') {
+    return (
+      <Button
+        variant='outline'
+        size='icon'
+        className={props.className}
+        aria-label={t('Toggle theme')}
+        onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
+      >
+        {resolvedTheme === 'dark' ? (
+          <Sun aria-hidden='true' className='size-4 text-amber-400' />
+        ) : (
+          <Moon aria-hidden='true' className='size-4' />
+        )}
+      </Button>
+    )
+  }
 
   return (
     <DropdownMenu modal={false}>

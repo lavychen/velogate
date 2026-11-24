@@ -17,6 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { Link } from '@tanstack/react-router'
+import type { MouseEvent, MouseEventHandler } from 'react'
 
 import { cn } from '@/lib/utils'
 
@@ -25,13 +26,14 @@ import type { TopNavLink } from '../types'
 interface NavLinkItemProps {
   link: TopNavLink
   className?: string
+  onClick?: MouseEventHandler<HTMLAnchorElement>
 }
 
 /**
  * Renders a single navigation link (internal or external)
  * Handles routing and proper link attributes
  */
-export function NavLinkItem({ link, className }: NavLinkItemProps) {
+export function NavLinkItem({ link, className, onClick }: NavLinkItemProps) {
   const linkClassName = cn(
     'text-muted-foreground hover:text-foreground transition-colors',
     link.disabled && 'pointer-events-none opacity-50',
@@ -46,6 +48,7 @@ export function NavLinkItem({ link, className }: NavLinkItemProps) {
         rel='noopener noreferrer'
         className={linkClassName}
         aria-disabled={link.disabled}
+        onClick={onClick}
       >
         {link.title}
       </a>
@@ -53,7 +56,12 @@ export function NavLinkItem({ link, className }: NavLinkItemProps) {
   }
 
   return (
-    <Link to={link.href} className={linkClassName} disabled={link.disabled}>
+    <Link
+      to={link.href}
+      className={linkClassName}
+      disabled={link.disabled}
+      onClick={onClick}
+    >
       {link.title}
     </Link>
   )
@@ -63,6 +71,8 @@ interface NavLinkListProps {
   links: TopNavLink[]
   className?: string
   itemClassName?: string
+  onClick?: MouseEventHandler<HTMLAnchorElement>
+  onLinkClick?: (event: MouseEvent<HTMLAnchorElement>, link: TopNavLink) => void
 }
 
 /**
@@ -73,14 +83,20 @@ export function NavLinkList({
   links,
   className,
   itemClassName,
+  onClick,
+  onLinkClick,
 }: NavLinkListProps) {
   return (
     <>
-      {links.map((link, index) => (
+      {links.map((link) => (
         <NavLinkItem
-          key={index}
+          key={`${link.title}:${link.href}`}
           link={link}
           className={cn(className, itemClassName)}
+          onClick={(event) => {
+            onLinkClick?.(event, link)
+            onClick?.(event)
+          }}
         />
       ))}
     </>

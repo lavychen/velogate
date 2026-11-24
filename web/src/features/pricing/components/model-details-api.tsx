@@ -109,7 +109,7 @@ function buildChatSample(lang: Lang, ctx: SampleContext): string {
       `curl ${url} \\`,
       `  -H "Authorization: Bearer $${ctx.apiKeyEnv}" \\`,
       `  -H "Content-Type: application/json" \\`,
-      `  -d '${bodyJson.replace(/\n/g, '\n     ')}'`,
+      `  -d '${bodyJson.replaceAll('\n', '\n     ')}'`,
     ].join('\n')
   }
 
@@ -177,7 +177,7 @@ function buildAnthropicSample(lang: Lang, ctx: SampleContext): string {
       `  -H "x-api-key: $${ctx.apiKeyEnv}" \\`,
       `  -H "anthropic-version: 2023-06-01" \\`,
       `  -H "Content-Type: application/json" \\`,
-      `  -d '${body.replace(/\n/g, '\n     ')}'`,
+      `  -d '${body.replaceAll('\n', '\n     ')}'`,
     ].join('\n')
   }
   if (lang === 'python') {
@@ -249,7 +249,7 @@ function buildGeminiSample(lang: Lang, ctx: SampleContext): string {
     return [
       `curl '${url}' \\`,
       `  -H 'Content-Type: application/json' \\`,
-      `  -d '${body.replace(/\n/g, '\n     ')}'`,
+      `  -d '${body.replaceAll('\n', '\n     ')}'`,
     ].join('\n')
   }
   if (lang === 'python') {
@@ -299,7 +299,7 @@ function buildEmbeddingSample(lang: Lang, ctx: SampleContext): string {
       `curl ${url} \\`,
       `  -H "Authorization: Bearer $${ctx.apiKeyEnv}" \\`,
       `  -H "Content-Type: application/json" \\`,
-      `  -d '${body.replace(/\n/g, '\n     ')}'`,
+      `  -d '${body.replaceAll('\n', '\n     ')}'`,
     ].join('\n')
   }
   if (lang === 'python') {
@@ -365,7 +365,7 @@ function buildImageSample(lang: Lang, ctx: SampleContext): string {
       `curl ${url} \\`,
       `  -H "Authorization: Bearer $${ctx.apiKeyEnv}" \\`,
       `  -H "Content-Type: application/json" \\`,
-      `  -d '${body.replace(/\n/g, '\n     ')}'`,
+      `  -d '${body.replaceAll('\n', '\n     ')}'`,
     ].join('\n')
   }
   if (lang === 'python') {
@@ -430,8 +430,9 @@ function buildSample(
 ): string {
   if (endpointType === 'anthropic') return buildAnthropicSample(lang, ctx)
   if (endpointType === 'gemini') return buildGeminiSample(lang, ctx)
-  if (endpointType === 'embeddings' || endpointType === 'jina-rerank')
+  if (endpointType === 'embeddings' || endpointType === 'jina-rerank') {
     return buildEmbeddingSample(lang, ctx)
+  }
   if (endpointType === 'image-generation') return buildImageSample(lang, ctx)
   return buildChatSample(lang, ctx)
 }
@@ -440,7 +441,8 @@ function buildSample(
 // Code samples section
 // ---------------------------------------------------------------------------
 
-function CodeSamplesSection(props: {
+export function CodeSamplesSection(props: {
+  presentation?: 'default' | 'terminal'
   model: PricingModel
   endpointMap: Record<string, { path?: string; method?: string }>
 }) {
@@ -477,7 +479,9 @@ function CodeSamplesSection(props: {
   const [endpointType, setEndpointType] = useState<string>(
     endpoints[0]?.type ?? ''
   )
-  const [lang, setLang] = useState<Lang>('curl')
+  const [lang, setLang] = useState<Lang>(
+    props.presentation === 'terminal' ? 'python' : 'curl'
+  )
 
   const activeEndpoint = useMemo(() => {
     return endpoints.find((e) => e.type === endpointType) ?? endpoints[0]
@@ -497,7 +501,9 @@ function CodeSamplesSection(props: {
 
   return (
     <section>
-      <SectionTitle icon={ScrollText}>{t('Code samples')}</SectionTitle>
+      {props.presentation !== 'terminal' && (
+        <SectionTitle icon={ScrollText}>{t('Code samples')}</SectionTitle>
+      )}
 
       <div className='flex flex-wrap items-center gap-2'>
         {endpoints.length > 1 && (
@@ -522,11 +528,17 @@ function CodeSamplesSection(props: {
           className='ml-auto'
         >
           <TabsList className='bg-muted/40 h-8 p-0.5'>
-            {(Object.keys(LANG_LABELS) as Lang[]).map((l) => (
-              <TabsTrigger key={l} value={l} className='h-7 px-2.5 text-xs'>
-                {LANG_LABELS[l]}
-              </TabsTrigger>
-            ))}
+            {(Object.keys(LANG_LABELS) as Lang[])
+              .filter(
+                (l) => props.presentation !== 'terminal' || l !== 'javascript'
+              )
+              .map((l) => (
+                <TabsTrigger key={l} value={l} className='h-7 px-2.5 text-xs'>
+                  {props.presentation === 'terminal' && l === 'typescript'
+                    ? 'Node.js'
+                    : LANG_LABELS[l]}
+                </TabsTrigger>
+              ))}
           </TabsList>
         </Tabs>
       </div>
@@ -537,13 +549,15 @@ function CodeSamplesSection(props: {
         </CodeBlock>
       </div>
 
-      <p className='text-muted-foreground mt-2 text-xs'>
-        {t('Replace')}{' '}
-        <code className='bg-muted rounded px-1 py-0.5 font-mono text-[11px]'>
-          {'<YOUR_API_KEY>'}
-        </code>{' '}
-        {t('with the API key from your token settings.')}
-      </p>
+      {props.presentation !== 'terminal' && (
+        <p className='text-muted-foreground mt-2 text-xs'>
+          {t('Replace')}{' '}
+          <code className='bg-muted rounded px-1 py-0.5 font-mono text-[11px]'>
+            {'<YOUR_API_KEY>'}
+          </code>{' '}
+          {t('with the API key from your token settings.')}
+        </p>
+      )}
     </section>
   )
 }
