@@ -86,6 +86,35 @@ test('a page without header slots starts with its content and does not reserve a
   )
 })
 
+test.each([undefined, false, true])(
+  'a title already shown in navigation stays accessible without reserving a duplicate title row (actions=%s)',
+  (actions) => {
+    render(
+      <SectionPageLayout hideTitle fixedContent>
+        <SectionPageLayout.Title>Audit Logs</SectionPageLayout.Title>
+        <SectionPageLayout.Actions>
+          {actions && <a href='/export'>Export</a>}
+        </SectionPageLayout.Actions>
+        <SectionPageLayout.Content>
+          <p>Audit table</p>
+        </SectionPageLayout.Content>
+      </SectionPageLayout>
+    )
+
+    const title = screen.getByRole('heading', { name: 'Audit Logs' })
+    expect(title).toHaveClass('sr-only')
+    const content = screen.getByText('Audit table').parentElement
+    expect(content).toHaveClass('overflow-hidden', 'min-h-0', 'flex-1')
+    if (actions) {
+      const action = screen.getByRole('link', { name: 'Export' })
+      expect(action).toBeVisible()
+      expect(action.parentElement?.parentElement).toHaveClass('justify-end')
+    } else {
+      expect(title.nextElementSibling).toBe(content)
+    }
+  }
+)
+
 test.each([false, true])(
   'fluid pages fill the available width and align header, content and footer (fixedContent=%s)',
   (fixedContent) => {

@@ -137,7 +137,7 @@ export function Security() {
   }
 
   return (
-    <SectionPageLayout>
+    <SectionPageLayout hideTitle>
       <SectionPageLayout.Title>
         {t('Security & Access')}
       </SectionPageLayout.Title>

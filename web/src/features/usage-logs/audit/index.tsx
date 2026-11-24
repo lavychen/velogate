@@ -88,7 +88,7 @@ export function AuditLogs() {
     }
   }, [queryClient, userId])
   return (
-    <SectionPageLayout fluid fixedContent>
+    <SectionPageLayout fluid fixedContent hideTitle>
       <SectionPageLayout.Title>{t('Audit Logs')}</SectionPageLayout.Title>
       <SectionPageLayout.Actions>
         {canReadAll && !accessRevoked && (

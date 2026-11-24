@@ -114,7 +114,7 @@ export function MediaGeneration(props: { mode: 'image' | 'video' }) {
   }
 
   return (
-    <SectionPageLayout>
+    <SectionPageLayout hideTitle>
       <SectionPageLayout.Title>{title}</SectionPageLayout.Title>
       <SectionPageLayout.Content>
         <div className='space-y-4'>
