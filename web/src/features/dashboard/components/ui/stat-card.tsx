@@ -24,7 +24,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 
 type StatCardTone = 'accent-1' | 'accent-2' | 'accent-3'
-type StatCardSparklineVariant = 'bars' | 'line'
+type StatCardSparklineVariant = 'bars' | 'line' | 'none'
 type StatCardDetailTone =
   | 'default'
   | 'muted'
@@ -52,6 +52,7 @@ interface StatCardProps {
   action?: ReactNode
   iconTone?: IconBadgeTone
   compactMobile?: boolean
+  iconPosition?: 'start' | 'end'
 }
 
 const TONE_CLASSES: Record<StatCardTone, string> = {
@@ -263,6 +264,7 @@ export function StatCard(props: StatCardProps) {
         <p
           className={cn(
             'text-muted-foreground/60 line-clamp-1 text-[11px] sm:text-xs',
+            props.iconPosition === 'end' && 'text-muted-foreground',
             props.compactMobile && 'hidden sm:block'
           )}
         >
@@ -279,6 +281,7 @@ export function StatCard(props: StatCardProps) {
         <p
           className={cn(
             'text-muted-foreground/60 line-clamp-1 text-[11px] leading-relaxed sm:text-xs',
+            props.iconPosition === 'end' && 'text-muted-foreground',
             props.compactMobile && 'hidden sm:block'
           )}
         >
@@ -288,12 +291,12 @@ export function StatCard(props: StatCardProps) {
     )
   }
 
-  let visualization: ReactNode
+  let visualization: ReactNode = null
   if (props.details?.length) {
     visualization = <StatCardDetails details={props.details} />
   } else if (sparklineVariant === 'line') {
     visualization = <LineSparkline values={props.sparkline} tone={tone} />
-  } else {
+  } else if (sparklineVariant === 'bars') {
     visualization = <BarSparkline values={props.sparkline} tone={tone} />
   }
 
@@ -301,11 +304,18 @@ export function StatCard(props: StatCardProps) {
     <div
       className={cn(
         'group flex flex-col justify-between sm:min-h-32 sm:gap-3',
-        props.compactMobile ? 'gap-1' : 'gap-1.5'
+        props.compactMobile ? 'gap-1' : 'gap-1.5',
+        props.iconPosition === 'end' && 'justify-start sm:min-h-28'
       )}
     >
       <div className='flex items-start justify-between gap-1'>
-        <div className='text-muted-foreground flex items-center gap-1 text-[11px] font-medium sm:gap-2 sm:text-xs'>
+        <div
+          className={cn(
+            'text-muted-foreground flex items-center gap-1 text-[11px] font-medium sm:gap-2 sm:text-xs',
+            props.iconPosition === 'end' &&
+              'w-full flex-row-reverse justify-between'
+          )}
+        >
           <IconBadge
             tone={iconTone}
             size='stat'
@@ -325,7 +335,9 @@ export function StatCard(props: StatCardProps) {
 
       {valueContent}
 
-      <div className='hidden sm:block'>{visualization}</div>
+      {visualization != null && (
+        <div className='hidden sm:block'>{visualization}</div>
+      )}
     </div>
   )
 }

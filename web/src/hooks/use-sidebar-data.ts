@@ -65,7 +65,7 @@ export function useSidebarData(badges: SidebarBadges = {}): SidebarData {
             pages: [
               { title: t('Overview'), url: '/dashboard/overview' },
               { title: t('Model Call Analytics'), url: '/dashboard/models' },
-              { title: t('Flow'), url: '/dashboard/flow' },
+              { title: t('Request Flow'), url: '/dashboard/flow' },
               {
                 title: t('User Analytics'),
                 url: '/dashboard/users',

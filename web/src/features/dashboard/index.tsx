@@ -189,7 +189,7 @@ const SECTION_META: Record<DashboardSectionId, { titleKey: string }> = {
     titleKey: 'Model Call Analytics',
   },
   flow: {
-    titleKey: 'Flow',
+    titleKey: 'Request Flow',
   },
   users: {
     titleKey: 'User Analytics',
@@ -315,8 +315,8 @@ export function Dashboard() {
           currentFilters={modelFilters}
           onFilterChange={handleFilterChange}
           onReset={handleResetFilters}
-          titleKey='Flow Filters'
-          descriptionKey='Filter the traffic flow view by time range and user.'
+          titleKey='Request Flow Filters'
+          descriptionKey='Filter request flows by time range and user.'
         />
       </>
     ) : null
@@ -327,7 +327,7 @@ export function Dashboard() {
   }
 
   return (
-    <SectionPageLayout>
+    <SectionPageLayout fluid>
       <SectionPageLayout.Title>{t(meta.titleKey)}</SectionPageLayout.Title>
       <SectionPageLayout.Content>
         <div className='space-y-3 sm:space-y-4'>

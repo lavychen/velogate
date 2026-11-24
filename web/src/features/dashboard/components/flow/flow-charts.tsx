@@ -455,7 +455,7 @@ export function FlowCharts(props: FlowChartsProps) {
     chartInstanceRef.current?.clearState('selected')
     chartInstanceRef.current?.clearState('blur')
   }, [])
-  const chartTitle = t('Flow')
+  const chartTitle = t('Request Flow')
   const flowSpec = useMemo(
     () =>
       buildFlowSankeySpec(
@@ -533,7 +533,7 @@ export function FlowCharts(props: FlowChartsProps) {
           <EmptyMedia variant='icon'>
             <Route />
           </EmptyMedia>
-          <EmptyTitle>{t('No flow data available')}</EmptyTitle>
+          <EmptyTitle>{t('No request flow data available')}</EmptyTitle>
           <EmptyDescription>{t('No data available')}</EmptyDescription>
         </EmptyHeader>
       </Empty>
@@ -563,7 +563,7 @@ export function FlowCharts(props: FlowChartsProps) {
                     <Info className='size-3.5' />
                   </TooltipTrigger>
                   <TooltipContent className='max-w-[14rem]'>
-                    {t('Choose how flow widths are calculated.')}
+                    {t('Choose how connection widths are calculated.')}
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
@@ -690,7 +690,7 @@ export function FlowCharts(props: FlowChartsProps) {
                     <button
                       type='button'
                       className='text-muted-foreground/60 hover:text-foreground flex size-6 shrink-0 items-center justify-center rounded-md'
-                      aria-label={t('Show or hide flow columns')}
+                      aria-label={t('Show or hide request flow columns')}
                     />
                   }
                 >

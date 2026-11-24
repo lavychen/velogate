@@ -21,6 +21,8 @@ import { Building2, Wallet } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import { SectionPageLayout } from '@/components/layout'
+import { Button } from '@/components/ui/button'
+import { IconBadge } from '@/components/ui/icon-badge'
 import { useAuthStore } from '@/stores/auth-store'
 
 import { AnalyticsPage } from './components/analytics-page'
@@ -44,39 +46,32 @@ export function EnterpriseWorkspace() {
     content = <AnalyticsPage initialDimension={search.dimension} />
   }
   return (
-    <SectionPageLayout>
-      <SectionPageLayout.Title>
-        {section === 'analytics'
-          ? t('Overview & usage')
-          : t('Organization & members')}
-      </SectionPageLayout.Title>
-      <SectionPageLayout.Content>
-        <div className='mx-auto w-full max-w-[1520px] space-y-5 py-2'>
-          <section className='enterprise-panel flex flex-wrap items-center justify-between gap-3 px-5 py-4'>
-            <div className='flex min-w-0 items-center gap-3'>
-              <span className='flex size-10 shrink-0 items-center justify-center rounded-xl bg-orange-500/10 text-orange-600 dark:text-orange-400'>
-                <Building2 className='size-5' aria-hidden='true' />
-              </span>
-              <div className='min-w-0'>
-                <p className='truncate text-sm font-semibold'>{name}</p>
-                <p className='text-muted-foreground mt-1 text-xs'>
-                  {t(
-                    'Owned by NewAPI account {{username}}. All assigned keys use this account wallet.',
-                    { username: user?.username ?? '' }
-                  )}
-                </p>
-              </div>
+    <SectionPageLayout fluid={section === 'keys' || section === 'analytics'}>
+      <SectionPageLayout.Header>
+        <section className='flex flex-wrap items-center justify-between gap-3 py-1'>
+          <div className='flex min-w-0 items-center gap-3'>
+            <IconBadge tone='primary' size='lg'>
+              <Building2 className='size-5' aria-hidden='true' />
+            </IconBadge>
+            <div className='min-w-0'>
+              <h1 className='truncate text-lg font-semibold tracking-tight'>
+                {name}
+              </h1>
+              <p className='text-muted-foreground mt-1 max-w-2xl text-xs'>
+                {t('Account {{username}} · Shared wallet for assigned keys', {
+                  username: user?.username ?? '',
+                })}
+              </p>
             </div>
-            <Link
-              to='/wallet'
-              className='text-primary flex items-center gap-2 text-xs font-medium'
-            >
-              <Wallet className='size-4' aria-hidden='true' />
-              {t('Wallet & billing')}
-            </Link>
-          </section>
-          {content}
-        </div>
+          </div>
+          <Button variant='outline' size='sm' render={<Link to='/wallet' />}>
+            <Wallet className='size-4' aria-hidden='true' />
+            {t('Wallet & billing')}
+          </Button>
+        </section>
+      </SectionPageLayout.Header>
+      <SectionPageLayout.Content>
+        <div className='space-y-4'>{content}</div>
       </SectionPageLayout.Content>
     </SectionPageLayout>
   )
