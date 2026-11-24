@@ -7,18 +7,13 @@ import { ErrorState } from '@/components/error-state'
 import { SectionPageLayout } from '@/components/layout'
 import { LoadingState } from '@/components/loading-state'
 import { ModelSelector } from '@/components/model-group-selector'
-import { Card, CardContent } from '@/components/ui/card'
-import {
-  Field,
-  FieldDescription,
-  FieldGroup,
-  FieldLabel,
-} from '@/components/ui/field'
+import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { getServerErrorMessage } from '@/lib/server-error-message'
 import { useAuthStore } from '@/stores/auth-store'
 
 import { getGenerationKey, getGenerationOptions } from './api'
+import { GenerationWorkspace } from './generation-workspace'
 import { ImageGenerator } from './image-generator'
 import { VideoGenerator } from './video-generator'
 
@@ -66,7 +61,7 @@ export function MediaGeneration(props: { mode: 'image' | 'video' }) {
         <FieldLabel htmlFor='generation-key'>{t('API Key')}</FieldLabel>
         <NativeSelect
           id='generation-key'
-          className='w-full'
+          className='w-full [&_select]:h-10 [&_select]:rounded-xl'
           value={keyId ?? ''}
           disabled={keys.isPending || noKeys}
           onChange={(event) => setKeySelection(event.target.value)}
@@ -90,16 +85,19 @@ export function MediaGeneration(props: { mode: 'image' | 'video' }) {
           models={availableModels}
           onModelChange={setModelSelection}
           disabled={keys.isFetching || !availableModels.length}
-          className='h-9 w-full justify-start px-3 sm:w-full [&>span]:block [&>span]:text-sm'
+          className='h-10 w-full justify-start rounded-xl px-3 sm:w-full [&>span]:block [&>span]:text-sm'
         />
       </Field>
     </FieldGroup>
   )
 
   let setupState
+  let setupStatus = t('Loading...')
   if (noKeys) {
+    setupStatus = t('Unavailable')
     setupState = <EmptyState title={t('No available models')} />
   } else if (setupError) {
+    setupStatus = t('Generation failed')
     setupState = (
       <ErrorState
         description={getServerErrorMessage(setupError)}
@@ -114,17 +112,15 @@ export function MediaGeneration(props: { mode: 'image' | 'video' }) {
   }
 
   return (
-    <SectionPageLayout hideTitle>
+    <SectionPageLayout hideTitle fixedContent>
       <SectionPageLayout.Title>{title}</SectionPageLayout.Title>
       <SectionPageLayout.Content>
-        <div className='space-y-4'>
-          <FieldDescription>
-            {props.mode === 'image'
-              ? t('Generate images from a text prompt.')
-              : t('Generate videos from a text prompt.')}
-          </FieldDescription>
+        <div className='h-full min-h-0 overflow-y-auto lg:overflow-hidden'>
           {isReady && keyId && apiKey ? (
-            <div key={`${userId}-${keyId}-${props.mode}-${selectedModel}`}>
+            <div
+              className='h-full'
+              key={`${userId}-${keyId}-${props.mode}-${selectedModel}`}
+            >
               {props.mode === 'image' ? (
                 <ImageGenerator
                   apiKey={apiKey}
@@ -141,12 +137,14 @@ export function MediaGeneration(props: { mode: 'image' | 'video' }) {
               )}
             </div>
           ) : (
-            <Card>
-              <CardContent>
-                <div className='max-w-sm'>{connectionFields}</div>
-                {setupState}
-              </CardContent>
-            </Card>
+            <GenerationWorkspace
+              mode={props.mode}
+              pending={!noKeys && !setupError}
+              status={setupStatus}
+              settings={<div className='p-5'>{connectionFields}</div>}
+            >
+              {setupState}
+            </GenerationWorkspace>
           )}
         </div>
       </SectionPageLayout.Content>

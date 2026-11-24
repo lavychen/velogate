@@ -4,11 +4,10 @@ import { HugeiconsIcon } from '@hugeicons/react'
 import { useMutation } from '@tanstack/react-query'
 import { nanoid } from 'nanoid'
 import type { ReactNode } from 'react'
-import { useForm } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { z } from 'zod'
 
-import { EmptyState } from '@/components/empty-state'
 import { ErrorState } from '@/components/error-state'
 import { LoadingState } from '@/components/loading-state'
 import { Button } from '@/components/ui/button'
@@ -26,7 +25,12 @@ import { Textarea } from '@/components/ui/textarea'
 import { getServerErrorMessage } from '@/lib/server-error-message'
 
 import { generateImages } from './api'
+import { GenerationDetails } from './generation-details'
+import { GenerationEmptyState } from './generation-empty-state'
+import { GenerationHistory } from './generation-history'
+import { GenerationSizePicker } from './generation-size-picker'
 import { GenerationWorkspace } from './generation-workspace'
+import { useGenerationHistory } from './use-generation-history'
 
 export function ImageGenerator(props: {
   apiKey: string
@@ -77,6 +81,13 @@ export function ImageGenerator(props: {
       quality: '',
     },
   })
+  const size = useWatch({ control: form.control, name: 'size' })
+  const history = useGenerationHistory<{
+    id: string
+    images: { id: string; url: string }[]
+    prompt: string
+    values: z.infer<typeof schema>
+  }>()
   const submit = useMutation({
     mutationFn: async (values: z.infer<typeof schema>) => {
       const body: Record<string, unknown> = {
@@ -96,69 +107,100 @@ export function ImageGenerator(props: {
         throw new Error(t('The response did not include any images.'))
       }
       return {
+        id: nanoid(),
+        values,
         images: images.map((url) => ({ id: nanoid(), url })),
         prompt: values.prompt,
       }
     },
+    onSuccess: history.add,
     meta: { errorToast: false },
   })
 
+  const result = history.selected
+  let status = t('Ready')
+  if (result) status = t('Completed')
+  if (submit.isPending) status = t('Generating images...')
+  if (submit.isError) status = t('Generation failed')
+
   return (
     <GenerationWorkspace
+      mode='image'
+      model={props.model}
+      status={status}
       pending={submit.isPending}
+      history={
+        <GenerationHistory
+          mode='image'
+          entries={history.entries.map((entry) => ({
+            ...entry,
+            thumbnail: entry.images[0]?.url,
+          }))}
+          selectedId={result?.id}
+          onSelect={(id) => {
+            history.select(id)
+            submit.reset()
+          }}
+          disabled={submit.isPending}
+        />
+      }
       settings={
-        <form onSubmit={form.handleSubmit((values) => submit.mutate(values))}>
-          <FieldSet disabled={submit.isPending}>
-            {props.connectionFields}
-            <Separator />
-            <FieldGroup>
-              <Field data-invalid={Boolean(form.formState.errors.prompt)}>
-                <FieldLabel htmlFor='image-prompt'>{t('Prompt')}</FieldLabel>
-                <Textarea
-                  id='image-prompt'
-                  rows={6}
-                  className='min-h-36 resize-y'
-                  {...form.register('prompt')}
-                  placeholder={t('Describe the image you want to generate')}
-                  aria-invalid={Boolean(form.formState.errors.prompt)}
-                  aria-describedby={
-                    form.formState.errors.prompt
-                      ? 'image-prompt-error'
-                      : undefined
-                  }
-                />
-                <FieldError
-                  id='image-prompt-error'
-                  errors={[form.formState.errors.prompt]}
-                />
-              </Field>
-              {supportsNegativePrompt && (
-                <Field>
-                  <FieldLabel htmlFor='image-negative-prompt'>
-                    {t('Negative prompt')}
-                  </FieldLabel>
-                  <Input
-                    id='image-negative-prompt'
-                    {...form.register('negativePrompt')}
+        <form
+          className='flex min-h-0 flex-1 flex-col'
+          onSubmit={form.handleSubmit((values) => submit.mutate(values))}
+        >
+          <FieldSet
+            disabled={submit.isPending}
+            className='min-h-0 flex-1 gap-0'
+          >
+            <div className='flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto p-5'>
+              {props.connectionFields}
+              <Separator />
+              <FieldGroup>
+                <Field data-invalid={Boolean(form.formState.errors.prompt)}>
+                  <FieldLabel htmlFor='image-prompt'>{t('Prompt')}</FieldLabel>
+                  <Textarea
+                    id='image-prompt'
+                    rows={6}
+                    className='bg-muted/20 min-h-36 resize-y rounded-xl p-3 text-sm'
+                    {...form.register('prompt')}
+                    placeholder={t('Describe the image you want to generate')}
+                    aria-invalid={Boolean(form.formState.errors.prompt)}
+                    aria-describedby={
+                      form.formState.errors.prompt
+                        ? 'image-prompt-error'
+                        : undefined
+                    }
+                  />
+                  <FieldError
+                    id='image-prompt-error'
+                    errors={[form.formState.errors.prompt]}
                   />
                 </Field>
-              )}
-              <div className='grid grid-cols-2 gap-3'>
+                {supportsNegativePrompt && (
+                  <Field>
+                    <FieldLabel htmlFor='image-negative-prompt'>
+                      {t('Negative prompt')}
+                    </FieldLabel>
+                    <Input
+                      id='image-negative-prompt'
+                      {...form.register('negativePrompt')}
+                    />
+                  </Field>
+                )}
                 <Field>
-                  <FieldLabel htmlFor='image-size'>
+                  <FieldLabel id='image-size-label'>
                     {t('Image size')}
                   </FieldLabel>
-                  <NativeSelect
-                    id='image-size'
-                    className='w-full'
-                    {...form.register('size')}
-                  >
-                    {sizes.map((size) => (
-                      <NativeSelectOption key={size} value={size}>
-                        {size.replace('x', ' × ')}
-                      </NativeSelectOption>
-                    ))}
-                  </NativeSelect>
+                  <GenerationSizePicker
+                    labelId='image-size-label'
+                    value={size}
+                    sizes={sizes}
+                    onChange={(value) =>
+                      form.setValue('size', value, { shouldDirty: true })
+                    }
+                    disabled={submit.isPending}
+                  />
                 </Field>
                 <Field>
                   <FieldLabel htmlFor='image-count'>
@@ -166,7 +208,7 @@ export function ImageGenerator(props: {
                   </FieldLabel>
                   <NativeSelect
                     id='image-count'
-                    className='w-full'
+                    className='w-full [&_select]:h-10 [&_select]:rounded-xl'
                     {...form.register('count', { valueAsNumber: true })}
                   >
                     {(isDallE3 ? [1] : [1, 2, 3, 4]).map((count) => (
@@ -176,32 +218,38 @@ export function ImageGenerator(props: {
                     ))}
                   </NativeSelect>
                 </Field>
-              </div>
-              {qualities.length > 0 && (
-                <Field>
-                  <FieldLabel htmlFor='image-quality'>
-                    {t('Quality')}
-                  </FieldLabel>
-                  <NativeSelect
-                    id='image-quality'
-                    className='w-full'
-                    {...form.register('quality')}
-                  >
-                    <NativeSelectOption value=''>
-                      {t('Default')}
-                    </NativeSelectOption>
-                    {qualities.map((quality) => (
-                      <NativeSelectOption
-                        key={quality.value}
-                        value={quality.value}
-                      >
-                        {quality.label}
+                {qualities.length > 0 && (
+                  <Field>
+                    <FieldLabel htmlFor='image-quality'>
+                      {t('Quality')}
+                    </FieldLabel>
+                    <NativeSelect
+                      id='image-quality'
+                      className='w-full [&_select]:h-10 [&_select]:rounded-xl'
+                      {...form.register('quality')}
+                    >
+                      <NativeSelectOption value=''>
+                        {t('Default')}
                       </NativeSelectOption>
-                    ))}
-                  </NativeSelect>
-                </Field>
-              )}
-              <Button type='submit' className='w-full'>
+                      {qualities.map((quality) => (
+                        <NativeSelectOption
+                          key={quality.value}
+                          value={quality.value}
+                        >
+                          {quality.label}
+                        </NativeSelectOption>
+                      ))}
+                    </NativeSelect>
+                  </Field>
+                )}
+              </FieldGroup>
+            </div>
+            <div className='bg-background shrink-0 border-t p-4'>
+              <Button
+                type='submit'
+                className='h-11 w-full rounded-xl'
+                disabled={submit.isPending}
+              >
                 <HugeiconsIcon
                   icon={MagicWand01Icon}
                   data-icon='inline-start'
@@ -211,7 +259,7 @@ export function ImageGenerator(props: {
                   ? t('Generating images...')
                   : t('Generate image')}
               </Button>
-            </FieldGroup>
+            </div>
           </FieldSet>
         </form>
       }
@@ -223,38 +271,43 @@ export function ImageGenerator(props: {
           description={getServerErrorMessage(submit.error)}
         />
       )}
-      {submit.isIdle && (
-        <EmptyState
-          title={t('Image generation')}
-          description={t('Generated images will appear here.')}
+      {!result && submit.isIdle && (
+        <GenerationEmptyState
+          mode='image'
+          onPrompt={(prompt) => {
+            form.setValue('prompt', prompt, {
+              shouldDirty: true,
+              shouldValidate: true,
+            })
+            form.setFocus('prompt')
+          }}
         />
       )}
-      {submit.isSuccess && (
-        <div className='space-y-4'>
-          <p className='text-muted-foreground text-sm break-words whitespace-pre-wrap'>
-            {submit.data.prompt}
-          </p>
+      {result && !submit.isPending && !submit.isError && (
+        <div className='mx-auto flex w-full max-w-4xl flex-col gap-4'>
           <div
             className={
-              submit.data.images.length === 1
+              result.images.length === 1
                 ? 'grid gap-4'
                 : 'grid gap-4 sm:grid-cols-2'
             }
           >
-            {submit.data.images.map((image, index) => (
+            {result.images.map((image, index) => (
               <figure
                 key={image.id}
-                className='bg-background min-w-0 space-y-3 rounded-lg border p-3'
+                className='bg-background min-w-0 overflow-hidden rounded-xl border shadow-sm'
               >
-                <img
-                  src={image.url}
-                  alt={submit.data.prompt}
-                  className='max-h-[60vh] w-full rounded-md object-contain'
-                  loading='lazy'
-                />
-                <figcaption>
+                <div className='bg-background/60 p-2 sm:p-3'>
+                  <img
+                    src={image.url}
+                    alt={result.prompt}
+                    className='max-h-[55vh] w-full rounded-lg object-contain'
+                    loading='lazy'
+                  />
+                </div>
+                <figcaption className='flex items-center justify-end border-t px-3 py-2'>
                   <Button
-                    variant='outline'
+                    variant='ghost'
                     role='link'
                     size='sm'
                     render={
@@ -277,6 +330,19 @@ export function ImageGenerator(props: {
               </figure>
             ))}
           </div>
+          <GenerationDetails
+            prompt={result.prompt}
+            metadata={
+              <>
+                <span>{props.model}</span>
+                <span>{result.values.size.replace('x', ' × ')}</span>
+              </>
+            }
+            onReuse={() => {
+              form.reset(result.values)
+              requestAnimationFrame(() => form.setFocus('prompt'))
+            }}
+          />
         </div>
       )}
     </GenerationWorkspace>

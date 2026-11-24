@@ -32,6 +32,7 @@ For commercial licensing, please contact support@quantumnous.com
 @import './console.css';
 @import './home.css';
 @import './model-square.css';
+@import './media-generation.css';
 
 @layer base {
   :root {

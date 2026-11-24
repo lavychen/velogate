@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import type { AxiosRequestConfig } from 'axios'
 import { StrictMode } from 'react'
 import { afterEach, expect, test, vi } from 'vitest'
@@ -276,6 +277,11 @@ test('image submission locks settings until the selected parameters produce down
   fireEvent.change(screen.getByLabelText('Image count'), {
     target: { value: '2' },
   })
+  fireEvent.click(screen.getByRole('button', { name: '1536 × 1024' }))
+  expect(screen.getByRole('button', { name: '1536 × 1024' })).toHaveAttribute(
+    'aria-pressed',
+    'true'
+  )
   fireEvent.click(screen.getByRole('button', { name: 'Generate image' }))
   await waitFor(() =>
     expect(screen.getByLabelText('API key selection')).toBeDisabled()
@@ -283,7 +289,13 @@ test('image submission locks settings until the selected parameters produce down
   expect(JSON.parse(adapter.mock.calls[0][0].data)).toMatchObject({
     model: 'gpt-image-1',
     n: 2,
+    size: '1536x1024',
   })
+  expect(screen.getByRole('region', { name: 'Preview' })).toHaveAttribute(
+    'aria-busy',
+    'true'
+  )
+  expect(screen.getByRole('button', { name: '1536 × 1024' })).toBeDisabled()
   complete({
     status: 200,
     headers: {},
@@ -383,3 +395,97 @@ test('a non-Sora video model uses provider defaults instead of submitting Sora-s
   })
   expect(screen.getByRole('button', { name: 'Generate video' })).toBeEnabled()
 })
+
+test.each([
+  ['image', 'Product photography'],
+  ['video', 'Cinematic aerial'],
+] as const)(
+  '%s example fills and focuses the prompt without submitting',
+  async (mode, example) => {
+    const user = userEvent.setup()
+    renderGenerator(mode)
+    await user.click(screen.getByRole('button', { name: example }))
+    const prompt = screen.getByLabelText('Prompt')
+    expect(prompt).not.toHaveValue('')
+    expect(prompt).toHaveFocus()
+    expect(adapter).not.toHaveBeenCalled()
+  }
+)
+
+test.each(['image', 'video'] as const)(
+  '%s history switches previews and reuses parameters without generating again',
+  async (mode) => {
+    let requestNumber = 0
+    vi.stubGlobal(
+      'URL',
+      class extends URL {
+        static createObjectURL = () => 'blob:history-preview'
+        static revokeObjectURL = vi.fn()
+      }
+    )
+    adapter.mockImplementation(async (config) => {
+      let data: unknown
+      if (config.method === 'post') {
+        requestNumber++
+        data =
+          mode === 'image'
+            ? {
+                data: [
+                  { url: `https://example.com/result-${requestNumber}.png` },
+                ],
+              }
+            : { id: `video_${requestNumber}`, status: 'completed' }
+      } else if (config.responseType === 'blob') {
+        data = new Blob(['video'], { type: 'video/mp4' })
+      } else {
+        data = { id: `video_${requestNumber}`, status: 'completed' }
+      }
+      return { status: 200, headers: {}, data }
+    })
+    renderGenerator(mode)
+    const generate = mode === 'image' ? 'Generate image' : 'Generate video'
+    const size = mode === 'image' ? '1536 × 1024' : '720 × 1280'
+    fireEvent.change(screen.getByLabelText('Prompt'), {
+      target: { value: 'First scene' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: size }))
+    fireEvent.click(screen.getByRole('button', { name: generate }))
+    await screen.findByRole('button', { name: 'View generation 1' })
+    fireEvent.change(screen.getByLabelText('Prompt'), {
+      target: { value: 'Second scene' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: generate }))
+    await screen.findByRole('button', { name: 'View generation 2' })
+
+    const user = userEvent.setup()
+    const first = screen.getByRole('button', { name: 'View generation 1' })
+    first.focus()
+    await user.keyboard('{Enter}')
+    expect(first).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByText('First scene')).toBeVisible()
+    if (mode === 'image') {
+      expect(screen.getByRole('img', { name: 'First scene' })).toHaveAttribute(
+        'src',
+        'https://example.com/result-1.png'
+      )
+    } else {
+      await waitFor(() =>
+        expect(screen.getByRole('link', { name: 'Download' })).toHaveAttribute(
+          'download',
+          'video_1.mp4'
+        )
+      )
+    }
+    fireEvent.change(screen.getByLabelText('Prompt'), {
+      target: { value: 'An unsaved edit' },
+    })
+    await user.click(screen.getByRole('button', { name: 'Reuse settings' }))
+    expect(screen.getByLabelText('Prompt')).toHaveValue('First scene')
+    await waitFor(() => expect(screen.getByLabelText('Prompt')).toHaveFocus())
+    expect(screen.getByRole('button', { name: size })).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    )
+    expect(requestNumber).toBe(2)
+  }
+)

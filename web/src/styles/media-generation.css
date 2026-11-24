@@ -1,0 +1,10 @@
+@layer components {
+  .media-generation-canvas {
+    background-color: var(--muted);
+    background-image: radial-gradient(
+      color-mix(in oklab, var(--muted-foreground) 20%, transparent) 1px,
+      transparent 1px
+    );
+    background-size: 20px 20px;
+  }
+}
