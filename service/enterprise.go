@@ -521,7 +521,7 @@ func GetEnterpriseWorkspace(userID int) (*model.EnterpriseWorkspace, error) {
 	var workspace model.EnterpriseWorkspace
 	err = db.Where("newapi_user_id = ?", userID).First(&workspace).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return &model.EnterpriseWorkspace{NewAPIUserID: userID}, nil
+		return model.EnsureDefaultEnterpriseWorkspace(userID)
 	}
 	return &workspace, err
 }

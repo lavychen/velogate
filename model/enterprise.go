@@ -7,12 +7,14 @@ package model
 import (
 	"errors"
 	"fmt"
-	"github.com/glebarez/sqlite"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
+	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 var SupportDB *gorm.DB
@@ -143,6 +145,62 @@ type EnterpriseWorkspace struct {
 }
 
 func (EnterpriseWorkspace) TableName() string { return "enterprise_workspaces" }
+
+// EnsureDefaultEnterpriseWorkspace initializes only accounts without any
+// enterprise data. Existing and previously deleted organizations are preserved.
+func EnsureDefaultEnterpriseWorkspace(userID int) (*EnterpriseWorkspace, error) {
+	db, err := EnterpriseDB()
+	if err != nil {
+		return nil, err
+	}
+	if userID <= 0 {
+		return nil, gorm.ErrRecordNotFound
+	}
+	var user User
+	if err := DB.Select("id").Where("id = ? AND status = ?", userID, 1).First(&user).Error; err != nil {
+		return nil, err
+	}
+	workspace := EnterpriseWorkspace{NewAPIUserID: userID}
+	err = db.Transaction(func(tx *gorm.DB) error {
+		err := tx.Where("newapi_user_id = ?", userID).First(&workspace).Error
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			return err
+		}
+		var count int64
+		if err := tx.Model(&EnterpriseDepartment{}).Where("newapi_user_id = ?", userID).Count(&count).Error; err != nil {
+			return err
+		}
+		if count > 0 {
+			return nil
+		}
+		if err := tx.Model(&EnterpriseEmployee{}).Where("newapi_user_id = ?", userID).Count(&count).Error; err != nil {
+			return err
+		}
+		if count > 0 {
+			return nil
+		}
+
+		now := time.Now().Unix()
+		workspace.Name, workspace.CreatedAt = "默认企业空间", now
+		result := tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&workspace)
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected == 0 {
+			return tx.Where("newapi_user_id = ?", userID).First(&workspace).Error
+		}
+		department := EnterpriseDepartment{NewAPIUserID: userID, Name: "默认部门", Status: 1, CreatedAt: now, UpdatedAt: now}
+		if err := CreateEnterpriseDepartmentRecord(tx, &department); err != nil {
+			return err
+		}
+		employee := EnterpriseEmployee{NewAPIUserID: userID, DepartmentID: department.ID, Name: "默认员工", Status: 1, CreatedAt: now, UpdatedAt: now}
+		return CreateEnterpriseEmployeeRecord(tx, &employee)
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &workspace, nil
+}
 
 // ValidateEnterpriseTokenScope is enforced for relay and read-only token use.
 // Assignment is attribution, while disabled/deleted assignees revoke access.

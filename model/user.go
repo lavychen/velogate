@@ -699,6 +699,10 @@ func (user *User) Insert(inviterId int) error {
 }
 
 func (user *User) finishInsert(inviterId int) {
+	if _, err := EnsureDefaultEnterpriseWorkspace(user.Id); err != nil {
+		common.SysError(common.LogText("failed to initialize enterprise workspace for user %d: %s", user.Id, err.Error()))
+	}
+
 	// 用户创建成功后，根据角色初始化边栏配置
 	// 需要重新获取用户以确保有正确的ID和Role
 	var createdUser User
@@ -758,6 +762,10 @@ func (user *User) InsertWithTx(tx *gorm.DB, inviterId int) error {
 // FinalizeOAuthUserCreation performs post-transaction tasks for OAuth user creation.
 // This should be called after the transaction commits successfully.
 func (user *User) FinalizeOAuthUserCreation(inviterId int) {
+	if _, err := EnsureDefaultEnterpriseWorkspace(user.Id); err != nil {
+		common.SysError(common.LogText("failed to initialize enterprise workspace for user %d: %s", user.Id, err.Error()))
+	}
+
 	// 用户创建成功后，根据角色初始化边栏配置
 	var createdUser User
 	if err := DB.Where("id = ?", user.Id).First(&createdUser).Error; err == nil {

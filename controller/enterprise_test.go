@@ -1,11 +1,13 @@
 package controller
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -101,6 +103,121 @@ func TestEnterpriseDatabaseCompatibility(t *testing.T) {
 				other := model.User{Id: 201, Username: "other-owner", Role: 1, Status: 1, Group: "default", AffCode: "other-owner"}
 				require.NoError(t, core.Create(&user).Error)
 				require.NoError(t, core.Create(&other).Error)
+				t.Run("default organization", func(t *testing.T) {
+					for _, flow := range []string{"registration", "admin", "oauth"} {
+						t.Run(flow, func(t *testing.T) {
+							newUser := model.User{Username: "default-" + flow, Role: common.RoleCommonUser, Status: common.UserStatusEnabled, Group: "default"}
+							if flow == "registration" {
+								require.NoError(t, newUser.Insert(0))
+							} else {
+								require.NoError(t, core.Transaction(func(tx *gorm.DB) error {
+									return newUser.InsertWithTx(tx, 0)
+								}))
+								if flow == "oauth" {
+									newUser.FinalizeOAuthUserCreation(0)
+								} else {
+									newUser.FinishInsert(0)
+								}
+							}
+							var workspace model.EnterpriseWorkspace
+							require.NoError(t, model.SupportDB.Where("newapi_user_id = ?", newUser.Id).First(&workspace).Error)
+							assert.Equal(t, "默认企业空间", workspace.Name)
+							departments, err := model.ListEnterpriseDepartments(newUser.Id, false)
+							require.NoError(t, err)
+							require.Len(t, departments, 1)
+							assert.Equal(t, "默认部门", departments[0].Name)
+							assert.Equal(t, 1, departments[0].Status)
+							assert.Nil(t, departments[0].ParentID)
+							employees, err := model.ListEnterpriseEmployees(newUser.Id, 0, false)
+							require.NoError(t, err)
+							require.Len(t, employees, 1)
+							assert.Equal(t, "默认员工", employees[0].Name)
+							assert.Equal(t, 1, employees[0].Status)
+							assert.Equal(t, departments[0].ID, employees[0].DepartmentID)
+							assert.Empty(t, employees[0].Email)
+							_, err = model.GetEnterpriseEmployee(nil, other.Id, employees[0].ID, false)
+							require.ErrorIs(t, err, gorm.ErrRecordNotFound)
+							for range 2 {
+								_, err := service.GetEnterpriseWorkspace(newUser.Id)
+								require.NoError(t, err)
+								_, err = model.EnsureDefaultEnterpriseWorkspace(newUser.Id)
+								require.NoError(t, err)
+							}
+							afterDepartments, err := model.ListEnterpriseDepartments(newUser.Id, false)
+							require.NoError(t, err)
+							assert.Equal(t, departments, afterDepartments)
+							afterEmployees, err := model.ListEnterpriseEmployees(newUser.Id, 0, false)
+							require.NoError(t, err)
+							assert.Equal(t, employees, afterEmployees)
+							stored, err := model.GetUserById(newUser.Id, false)
+							require.NoError(t, err)
+							assert.Equal(t, common.RoleCommonUser, stored.Role)
+							assert.Equal(t, newUser.AuthVersion, stored.AuthVersion)
+						})
+					}
+
+					// Existing blank accounts recover from an extension write failure.
+					emptyUser := model.User{Username: "default-retry", Role: common.RoleCommonUser, Status: common.UserStatusEnabled, Group: "default", AffCode: "retry"}
+					require.NoError(t, core.Create(&emptyUser).Error)
+					writeFailure := errors.New("employee insert failed")
+					const callbackName = "test:fail_default_employee"
+					require.NoError(t, model.SupportDB.Callback().Create().Before("gorm:create").Register(callbackName, func(tx *gorm.DB) {
+						if tx.Statement.Table == "enterprise_employees" {
+							tx.AddError(writeFailure)
+						}
+					}))
+					t.Cleanup(func() { model.SupportDB.Callback().Create().Remove(callbackName) })
+					_, err := model.EnsureDefaultEnterpriseWorkspace(emptyUser.Id)
+					require.ErrorIs(t, err, writeFailure)
+					var count int64
+					require.NoError(t, model.SupportDB.Model(&model.EnterpriseWorkspace{}).Where("newapi_user_id = ?", emptyUser.Id).Count(&count).Error)
+					assert.Zero(t, count)
+					departments, err := model.ListEnterpriseDepartments(emptyUser.Id, true)
+					require.NoError(t, err)
+					assert.Empty(t, departments)
+					require.NoError(t, model.SupportDB.Callback().Create().Remove(callbackName))
+					var wg sync.WaitGroup
+					results := make(chan error, 2)
+					for range 2 {
+						wg.Go(func() {
+							_, err := service.GetEnterpriseWorkspace(emptyUser.Id)
+							results <- err
+						})
+					}
+					wg.Wait()
+					close(results)
+					for err := range results {
+						require.NoError(t, err)
+					}
+					departments, err = model.ListEnterpriseDepartments(emptyUser.Id, false)
+					require.NoError(t, err)
+					require.Len(t, departments, 1)
+					employees, err := model.ListEnterpriseEmployees(emptyUser.Id, 0, false)
+					require.NoError(t, err)
+					require.Len(t, employees, 1)
+					assert.Equal(t, departments[0].ID, employees[0].DepartmentID)
+
+					rolledBack := model.User{Username: "default-rollback", Role: common.RoleCommonUser}
+					require.ErrorIs(t, core.Transaction(func(tx *gorm.DB) error {
+						if err := rolledBack.InsertWithTx(tx, 0); err != nil {
+							return err
+						}
+						return writeFailure
+					}), writeFailure)
+					_, err = service.GetEnterpriseWorkspace(rolledBack.Id)
+					require.ErrorIs(t, err, gorm.ErrRecordNotFound)
+					disabled := model.User{Username: "default-disabled", Status: common.UserStatusDisabled, AffCode: "disabled"}
+					require.NoError(t, core.Create(&disabled).Error)
+					_, err = model.EnsureDefaultEnterpriseWorkspace(disabled.Id)
+					require.ErrorIs(t, err, gorm.ErrRecordNotFound)
+					_, err = model.EnsureDefaultEnterpriseWorkspace(0)
+					require.ErrorIs(t, err, gorm.ErrRecordNotFound)
+
+					// Legacy organization data must not gain extra default members.
+					workspace, err := service.GetEnterpriseWorkspace(101)
+					require.NoError(t, err)
+					assert.Empty(t, workspace.Name)
+				})
 				require.NoError(t, core.Create(&model.Token{Id: 71, UserId: 101, Name: "Legacy key", Key: strings.Repeat("a", 48), Status: 1, ExpiredTime: -1}).Error)
 				require.NoError(t, model.LOG_DB.Create(&model.Log{UserId: 101, Type: model.LogTypeConsume, TokenId: 71, CreatedAt: now - 50, ModelName: "gpt-test", PromptTokens: 7, CompletionTokens: 5, Quota: 500}).Error)
 				require.NoError(t, model.LOG_DB.Create(&model.Log{UserId: 201, Type: model.LogTypeConsume, TokenId: 71, CreatedAt: now - 50, ModelName: "private", PromptTokens: 999, Quota: 999999}).Error)
