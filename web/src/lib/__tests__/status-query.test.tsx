@@ -263,3 +263,33 @@ describe('module guard status freshness', () => {
     }
   )
 })
+
+describe('site branding configuration', () => {
+  test('uses velogate defaults when the server leaves site branding empty', async () => {
+    stubStatusEndpoint('')
+    await ensureStatus(createQueryClient())
+
+    expect(useSystemConfigStore.getState().config).toMatchObject({
+      systemName: 'velogate',
+      logo: '/velogate-logo.png',
+    })
+  })
+
+  test('preserves a custom site name and logo returned by the server', async () => {
+    apiClient.get = async () => ({
+      data: {
+        success: true,
+        data: {
+          system_name: 'Custom gateway',
+          logo: 'https://example.com/custom.png',
+        },
+      },
+    })
+    await ensureStatus(createQueryClient())
+
+    expect(useSystemConfigStore.getState().config).toMatchObject({
+      systemName: 'Custom gateway',
+      logo: 'https://example.com/custom.png',
+    })
+  })
+})
