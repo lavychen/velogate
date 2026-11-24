@@ -40,7 +40,7 @@ afterEach(() => {
 })
 
 test.each(['sidebar', 'inline'] as const)(
-  'shows velogate and its logo in the %s brand when no site customization is configured',
+  'shows the name and logo in the %s brand when no site customization is configured',
   async (variant) => {
     const client = new QueryClient()
     clients.push(client)
@@ -62,7 +62,13 @@ test.each(['sidebar', 'inline'] as const)(
       </QueryClientProvider>
     )
 
-    expect(await screen.findByText('velogate')).toBeVisible()
+    expect(
+      await screen.findByText(variant === 'sidebar' ? 'VeloGate' : 'velogate')
+    ).toBeVisible()
+    if (variant === 'sidebar') {
+      expect(screen.getByText('MaaS')).toBeVisible()
+      expect(screen.queryByText('v1.0.0')).not.toBeInTheDocument()
+    }
     expect(screen.getByRole('img', { name: 'Logo' })).toHaveAttribute(
       'src',
       '/velogate-logo.png'

@@ -17,9 +17,9 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { Link } from '@tanstack/react-router'
-import { Flame } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
+import { Badge } from '@/components/ui/badge'
 import {
   SidebarMenu,
   SidebarMenuButton,
@@ -32,7 +32,6 @@ import { cn } from '@/lib/utils'
 
 type SystemBrandProps = {
   defaultName?: string
-  defaultVersion?: string
   /**
    * Visual layout:
    * - 'sidebar': stacked card style (used inside the sidebar header).
@@ -54,8 +53,6 @@ export function SystemBrand(props: SystemBrandProps) {
 
   const variant = props.variant ?? 'sidebar'
   const name = status?.system_name || props.defaultName || DEFAULT_SYSTEM_NAME
-  const version =
-    status?.version || props.defaultVersion || t('Unknown version')
 
   if (variant === 'inline') {
     return (
@@ -94,13 +91,16 @@ export function SystemBrand(props: SystemBrandProps) {
               className='size-full rounded-lg object-cover'
             />
           </div>
-          <Flame
-            className='size-4 shrink-0 text-orange-500 group-data-[collapsible=icon]:hidden'
-            aria-hidden='true'
-          />
-          <div className='grid flex-1 text-start text-sm leading-tight group-data-[collapsible=icon]:hidden'>
-            <span className='truncate font-semibold'>{name}</span>
-            <span className='truncate text-xs'>{version}</span>
+          <div className='flex min-w-0 flex-1 items-center gap-2 group-data-[collapsible=icon]:hidden'>
+            <span className='text-foreground truncate text-base font-bold'>
+              VeloGate
+            </span>
+            <Badge
+              variant='secondary'
+              className='text-muted-foreground rounded-md px-1.5 text-[10px] font-normal'
+            >
+              MaaS
+            </Badge>
           </div>
         </SidebarMenuButton>
       </SidebarMenuItem>
