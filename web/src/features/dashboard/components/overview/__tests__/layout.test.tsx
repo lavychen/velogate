@@ -49,6 +49,7 @@ import type {
   FAQItem,
   QuotaDataItem,
 } from '@/features/dashboard/types'
+import { useKeyDialogStore } from '@/features/enterprise/key-dialog-store'
 import { api } from '@/lib/api'
 import { useAuthStore } from '@/stores/auth-store'
 import { useSystemConfigStore } from '@/stores/system-config-store'
@@ -85,6 +86,9 @@ let usageFailed: boolean
 let announcementItems: AnnouncementItem[]
 let faqItems: FAQItem[]
 let workspaceName: string
+let activeKeys: number
+let analyticsFailed: boolean
+let docsLink: string
 
 beforeEach(() => {
   window.localStorage.clear()
@@ -109,6 +113,9 @@ beforeEach(() => {
   announcementItems = []
   faqItems = []
   workspaceName = 'Workspace'
+  activeKeys = 0
+  analyticsFailed = false
+  docsLink = ''
   vi.spyOn(api, 'get').mockImplementation(async (url) => {
     switch (url) {
       case '/api/status':
@@ -121,14 +128,19 @@ beforeEach(() => {
               uptime_kuma_enabled: true,
               announcements: announcementItems,
               faq: faqItems,
+              docs_link: docsLink,
             },
           },
         }
       case '/api/enterprise/workspace':
         return { data: { success: true, data: { id: 1, name: workspaceName } } }
       case '/api/enterprise/analytics/overview':
+        if (analyticsFailed) throw new Error('Analytics unavailable')
         return {
-          data: { success: true, data: { summary: { active_keys: 0 } } },
+          data: {
+            success: true,
+            data: { summary: { active_keys: activeKeys } },
+          },
         }
       case '/api/data/self':
         if (usageFailed) throw new Error('Usage unavailable')
@@ -146,6 +158,7 @@ afterEach(async () => {
     i18next.removeResourceBundle(language, 'translation')
   }
   client.clear()
+  useKeyDialogStore.getState().close()
   useAuthStore.setState(useAuthStore.getInitialState(), true)
   useSystemConfigStore.setState(useSystemConfigStore.getInitialState(), true)
   window.localStorage.clear()
@@ -165,6 +178,91 @@ async function renderOverview() {
 }
 
 describe('overview layout', () => {
+  it('groups optional setup in a wrapping capsule and keeps key assignment available directly', async () => {
+    const user = userEvent.setup()
+    await renderOverview()
+    const guide = screen.getByRole('navigation', { name: 'Quick Start' })
+    const optional = within(guide).getByRole('group', {
+      name: 'Optional setup',
+    })
+    expect(optional).toHaveClass('border-dashed', 'flex-wrap', 'max-w-full')
+    expect(guide).toHaveClass(
+      'order-3',
+      'w-full',
+      'flex-wrap',
+      'xl:order-2',
+      'xl:w-auto'
+    )
+    expect(
+      within(optional).getByRole('link', { name: 'Add department' })
+    ).toHaveAttribute('href', '/enterprise/departments')
+    expect(
+      within(optional).getByRole('link', { name: 'Add employee' })
+    ).toHaveAttribute('href', '/enterprise/employees')
+    const assign = within(guide).getByRole('button', { name: 'Assign Key' })
+    await waitFor(() => expect(assign).toHaveAttribute('aria-current', 'step'))
+    act(() => assign.focus())
+    expect(
+      await screen.findByText('Create an API key to get started')
+    ).toBeVisible()
+    await user.keyboard('{Enter}')
+    expect(useKeyDialogStore.getState().open).toBe(true)
+    expect(useKeyDialogStore.getState().employeeId).toBeUndefined()
+    expect(
+      within(guide).getByRole('link', { name: 'Start calling' })
+    ).toHaveAttribute('href', 'https://docs.newapi.pro/api/')
+  })
+
+  it('shows default organization hints on keyboard focus and highlights calling after a key exists', async () => {
+    activeKeys = 2
+    docsLink = 'https://example.com/api-guide'
+    await renderOverview()
+    const guide = screen.getByRole('navigation', { name: 'Quick Start' })
+    const call = within(guide).getByRole('link', { name: 'Start calling' })
+    await waitFor(() => expect(call).toHaveAttribute('aria-current', 'step'))
+    expect(call).toHaveAttribute('href', docsLink)
+    const assign = within(guide).getByRole('button', { name: 'Assign Key' })
+    expect(assign).not.toHaveAttribute('aria-current')
+    act(() =>
+      within(guide).getByRole('link', { name: 'Add department' }).focus()
+    )
+    expect(
+      await screen.findByText(
+        'A default department has been created. Customize it as needed.'
+      )
+    ).toBeVisible()
+    act(() => within(guide).getByRole('link', { name: 'Add employee' }).focus())
+    expect(
+      await screen.findByText(
+        'A default employee has been created. Customize it as needed.'
+      )
+    ).toBeVisible()
+    act(() => assign.focus())
+    expect(
+      await screen.findByText('Active keys: 2. Click to assign more.')
+    ).toBeVisible()
+  })
+
+  it('keeps onboarding actions available without claiming a current step when analytics fails', async () => {
+    analyticsFailed = true
+    await renderOverview()
+    await waitFor(() =>
+      expect(
+        client.getQueryState(['enterprise', 1, 'analytics', 'home'])?.status
+      ).toBe('error')
+    )
+    const guide = screen.getByRole('navigation', { name: 'Quick Start' })
+    expect(
+      within(guide).getByRole('button', { name: 'Assign Key' })
+    ).not.toHaveAttribute('aria-current')
+    expect(
+      within(guide).getByRole('link', { name: 'Start calling' })
+    ).not.toHaveAttribute('aria-current')
+    expect(screen.getByRole('link', { name: 'Active keys' })).toHaveTextContent(
+      '—'
+    )
+  })
+
   it.each([
     { role: 1, requestCount: 0, guidePreference: 'expanded' },
     { role: 1, requestCount: 1, guidePreference: 'collapsed' },

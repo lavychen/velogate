@@ -29,6 +29,7 @@ import { useAuthStore } from '@/stores/auth-store'
 
 import { getAnalyticsOverview } from '../api'
 import { useWorkspace } from '../hooks/use-enterprise'
+import { EnterpriseSetupSteps } from './enterprise-setup-steps'
 
 export function EnterpriseSummary() {
   const { t, i18n } = useTranslation()
@@ -45,7 +46,7 @@ export function EnterpriseSummary() {
       className='enterprise-panel flex flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-5'
       aria-label={t('Enterprise workspace')}
     >
-      <div className='flex min-w-0 items-center gap-3'>
+      <div className='order-1 flex min-w-0 flex-1 items-center gap-3 xl:max-w-56'>
         <IconBadge tone='warning' size='lg'>
           <Building2 className='size-5' aria-hidden='true' />
         </IconBadge>
@@ -63,11 +64,12 @@ export function EnterpriseSummary() {
           </Link>
         </div>
       </div>
+      <EnterpriseSetupSteps activeKeys={overview.data?.summary?.active_keys} />
       <Button
         role='link'
         aria-label={t('Active keys')}
         variant='outline'
-        className='bg-muted/40 h-9 max-w-full gap-2 rounded-full px-3'
+        className='bg-muted/40 order-2 h-9 max-w-full gap-2 rounded-full px-3 xl:order-3'
         render={<Link to='/enterprise/$section' params={{ section: 'keys' }} />}
       >
         <KeyRound className='text-primary size-4' aria-hidden='true' />
