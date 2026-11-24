@@ -155,7 +155,7 @@ async function renderAnalytics(section = 'analytics') {
   )
 }
 
-test('organization combines workspace context and actions, with searchable employees and departments in one card', async () => {
+test('organization combines workspace context with a fixed department directory and searchable employees', async () => {
   const user = userEvent.setup()
   await renderAnalytics('employees')
   const row = await screen.findByRole('row', { name: /Alice/ })
@@ -182,27 +182,38 @@ test('organization combines workspace context and actions, with searchable emplo
       'tabular-nums'
     )
   }
-  const employees = screen.getByRole('tab', { name: 'Employees' })
-  expect(employees).toHaveAttribute('aria-selected', 'true')
-  const card = employees.closest('[data-slot="tabs"]')
-  expect(card).toContainElement(screen.getByRole('table'))
-  expect(card).toContainElement(
-    screen.getByRole('textbox', { name: 'Search organization' })
+  const directory = screen.getByRole('complementary', { name: 'Departments' })
+  expect(directory).toHaveClass('md:w-[260px]', 'md:shrink-0')
+  expect(directory.parentElement).toHaveClass(
+    'flex-col',
+    'md:flex-row',
+    'min-w-0'
+  )
+  expect(directory).toContainElement(
+    screen.getByRole('textbox', { name: 'Search departments' })
+  )
+  expect(
+    screen.queryByRole('combobox', { name: 'Department' })
+  ).not.toBeInTheDocument()
+  expect(row.closest('[data-slot="table-container"]')).toHaveClass(
+    'overflow-x-auto'
   )
   await user.type(
-    screen.getByRole('textbox', { name: 'Search organization' }),
+    screen.getByRole('textbox', { name: 'Search employees' }),
     '2'
   )
   expect(screen.getByRole('row', { name: /Alice/ })).toBeVisible()
-  await user.clear(screen.getByRole('textbox', { name: 'Search organization' }))
-  await user.click(screen.getByRole('tab', { name: 'Departments' }))
-  expect(
-    await screen.findByRole('button', { name: 'Add department' })
-  ).toBeVisible()
-  expect(screen.getByRole('tab', { name: 'Departments' })).toHaveAttribute(
-    'aria-selected',
-    'true'
+  await user.clear(screen.getByRole('textbox', { name: 'Search employees' }))
+  await user.click(
+    within(directory).getByRole('button', { name: 'Engineering' })
   )
+  expect(
+    within(directory).getByRole('button', { name: 'Engineering' })
+  ).toHaveAttribute('aria-pressed', 'true')
+  expect(
+    screen.queryByRole('columnheader', { name: 'Department' })
+  ).not.toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Add department' })).toBeVisible()
 })
 
 test('analytics overview keeps the trend, activity and three rankings visible without a detail table', async () => {

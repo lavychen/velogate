@@ -1,6 +1,6 @@
 import { useMutation } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
-import { Building2, KeyRound, Plus, Search, Users, Wallet } from 'lucide-react'
+import { Building2, KeyRound, Plus, Search, Wallet } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -18,7 +18,6 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { toIntlLocale } from '@/i18n/languages'
 import { formatBillingCurrencyFromUSD } from '@/lib/currency'
 import { formatNumber } from '@/lib/format'
@@ -48,6 +47,10 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { KeyOwnershipCell } from './key-ownership-cell'
 import {
+  DepartmentDirectory,
+  DepartmentOverview,
+} from './organization-departments'
+import {
   OrganizationEditor,
   type OrganizationTarget,
 } from './organization-editor'
@@ -67,20 +70,27 @@ export function OrganizationPage(props: {
   const [removeTarget, setRemoveTarget] = useState<{
     id: number
     name: string
+    kind: 'employees' | 'departments' | 'keys'
   } | null>(null)
   const deletion = useMutation({
     mutationFn: async () => {
       if (!removeTarget) return
-      if (props.section === 'employees') {
+      if (removeTarget.kind === 'employees') {
         return requireServerSuccess(await deleteEmployee(removeTarget.id))
       }
-      if (props.section === 'departments') {
+      if (removeTarget.kind === 'departments') {
         return requireServerSuccess(await deleteDepartment(removeTarget.id))
       }
       return requireServerSuccess(await unassignToken(removeTarget.id))
     },
     onSuccess: async () => {
       await refresh()
+      if (
+        removeTarget?.kind === 'departments' &&
+        String(removeTarget.id) === departmentId
+      ) {
+        setDepartmentId('')
+      }
       setRemoveTarget(null)
     },
   })
@@ -88,9 +98,12 @@ export function OrganizationPage(props: {
     formatBillingCurrencyFromUSD(value, { locale, digitsLarge: 2 })
   const matches = (value: string) =>
     value.toLowerCase().includes(search.trim().toLowerCase())
+  const currentDepartment = departments.data?.find(
+    (row) => row.id === Number(departmentId)
+  )
   const employeeRows = (employees.data ?? []).filter(
     (row) =>
-      (!departmentId || row.department_id === Number(departmentId)) &&
+      (!currentDepartment || row.department_id === currentDepartment.id) &&
       matches(
         `${row.name} ${row.id} ${row.email ?? ''} ${row.employee_no ?? ''}`
       )
@@ -194,7 +207,7 @@ export function OrganizationPage(props: {
             deleteLabel={t('Delete')}
             menuLabel={t('Actions for {{name}}', { name: row.name })}
             onEdit={() => setEditor({ kind: 'employees', value: row })}
-            onDelete={() => setRemoveTarget(row)}
+            onDelete={() => setRemoveTarget({ ...row, kind: 'employees' })}
           />
         </div>
       ),
@@ -245,6 +258,7 @@ export function OrganizationPage(props: {
             size='sm'
             onClick={() =>
               setRemoveTarget({
+                kind: 'keys',
                 id: row.token_id,
                 name: row.token_name || String(row.token_id),
               })
@@ -256,6 +270,9 @@ export function OrganizationPage(props: {
       ),
     },
   ]
+  const visibleEmployeeColumns = currentDepartment
+    ? employeeColumns.filter((column) => column.id !== 'department')
+    : employeeColumns
   const pending =
     departments.isPending || employees.isPending || assignments.isPending
   const failed = departments.isError || employees.isError || assignments.isError
@@ -298,71 +315,106 @@ export function OrganizationPage(props: {
           )}
           {props.section !== 'keys' && (
             <Button
+              disabled={
+                pending ||
+                failed ||
+                (currentDepartment
+                  ? currentDepartment.status !== 1
+                  : !departments.data?.some((row) => row.status === 1))
+              }
               onClick={() =>
                 setEditor({
-                  kind:
-                    props.section === 'departments'
-                      ? 'departments'
-                      : 'employees',
+                  kind: 'employees',
+                  departmentId: currentDepartment?.id,
                 })
               }
             >
               <Plus aria-hidden='true' />
-              {props.section === 'employees'
-                ? t('Add employee')
-                : t('Add department')}
+              {t('Add employee')}
             </Button>
           )}
         </div>
       </div>
-      <Tabs
-        value={props.section}
-        className='enterprise-panel gap-0 overflow-hidden'
-      >
-        <div className='flex flex-wrap items-center justify-between gap-3 border-b px-4 py-3'>
-          {props.section !== 'keys' && (
-            <TabsList variant='line' aria-label={t('Organization & members')}>
-              <TabsTrigger
-                value='employees'
-                nativeButton={false}
-                render={
-                  <Link
-                    to='/enterprise/$section'
-                    params={{ section: 'employees' }}
-                  />
-                }
-              >
-                {t('Employees')}
-              </TabsTrigger>
-              <TabsTrigger
-                value='departments'
-                nativeButton={false}
-                render={
-                  <Link
-                    to='/enterprise/$section'
-                    params={{ section: 'departments' }}
-                  />
-                }
-              >
-                {t('Departments')}
-              </TabsTrigger>
-            </TabsList>
-          )}
-          <div className='flex w-full flex-wrap items-center gap-3 sm:w-auto'>
-            <div className='relative min-w-0 flex-1 sm:w-56'>
-              <Search
-                className='text-muted-foreground absolute top-2.5 left-2.5 size-4'
-                aria-hidden='true'
+      <div className='enterprise-panel overflow-hidden'>
+        {pending && <LoadingState />}
+        {failed && (
+          <ErrorState
+            onRetry={() => {
+              void departments.refetch()
+              void employees.refetch()
+              void assignments.refetch()
+            }}
+          />
+        )}
+        {!pending && !failed && props.section !== 'keys' && (
+          <div className='flex min-h-[560px] min-w-0 flex-col md:flex-row'>
+            <DepartmentDirectory
+              departments={departments.data ?? []}
+              employeeCount={employees.data?.length ?? 0}
+              selectedId={currentDepartment?.id}
+              onSelect={(id) => setDepartmentId(id ? String(id) : '')}
+              onCreate={() => setEditor({ kind: 'departments' })}
+              onEdit={(value) => setEditor({ kind: 'departments', value })}
+              onDelete={(row) =>
+                setRemoveTarget({ ...row, kind: 'departments' })
+              }
+            />
+            <div className='min-w-0 flex-1'>
+              <DepartmentOverview
+                department={currentDepartment}
+                departments={departments.data ?? []}
+                employeeCount={employees.data?.length ?? 0}
+                onEdit={() => {
+                  if (currentDepartment) {
+                    setEditor({ kind: 'departments', value: currentDepartment })
+                  }
+                }}
               />
-              <Input
-                className='pl-8'
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                aria-label={t('Search organization')}
-                placeholder={t('Search')}
-              />
+              <div className='px-4 py-4 sm:px-6'>
+                <div className='relative min-w-0 sm:max-w-xs'>
+                  <Search
+                    className='text-muted-foreground absolute top-2.5 left-2.5 size-4'
+                    aria-hidden='true'
+                  />
+                  <Input
+                    className='pl-8'
+                    value={search}
+                    onChange={(event) => setSearch(event.target.value)}
+                    aria-label={t('Search employees')}
+                    placeholder={t('Search employees by name or ID')}
+                  />
+                </div>
+              </div>
+              <div className='min-w-0 px-2 pb-2'>
+                <StaticDataTable
+                  data={employeeRows}
+                  columns={visibleEmployeeColumns}
+                  getRowKey={(row) => row.id}
+                  tableClassName={
+                    currentDepartment ? 'min-w-[720px]' : 'min-w-[850px]'
+                  }
+                  emptyContent={<EmptyState title={t('No results found.')} />}
+                />
+              </div>
             </div>
-            {props.section !== 'departments' && (
+          </div>
+        )}
+        {!pending && !failed && props.section === 'keys' && (
+          <>
+            <div className='flex flex-wrap items-center gap-3 border-b px-4 py-3'>
+              <div className='relative min-w-0 flex-1 sm:max-w-xs'>
+                <Search
+                  className='text-muted-foreground absolute top-2.5 left-2.5 size-4'
+                  aria-hidden='true'
+                />
+                <Input
+                  className='pl-8'
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  aria-label={t('Search organization')}
+                  placeholder={t('Search')}
+                />
+              </div>
               <NativeSelect
                 aria-label={t('Department')}
                 value={departmentId}
@@ -377,107 +429,19 @@ export function OrganizationPage(props: {
                   </NativeSelectOption>
                 ))}
               </NativeSelect>
-            )}
-          </div>
-        </div>
-        {pending && <LoadingState />}
-        {failed && (
-          <ErrorState
-            onRetry={() => {
-              void departments.refetch()
-              void employees.refetch()
-              void assignments.refetch()
-            }}
-          />
-        )}
-        {!pending && !failed && (
-          <>
-            {props.section === 'employees' && (
-              <div className='p-2'>
-                <StaticDataTable
-                  data={employeeRows}
-                  columns={employeeColumns}
-                  getRowKey={(row) => row.id}
-                  tableClassName='min-w-[850px]'
-                  emptyContent={<EmptyState title={t('No results found.')} />}
-                />
-              </div>
-            )}
-            {props.section === 'keys' && (
-              <div className='p-2'>
-                <StaticDataTable
-                  data={keyRows}
-                  columns={keyColumns}
-                  getRowKey={(row) => row.token_id}
-                  tableClassName='min-w-[640px]'
-                  emptyContent={<EmptyState title={t('No results found.')} />}
-                />
-              </div>
-            )}
-            {props.section === 'departments' && (
-              <div className='grid gap-4 p-4 md:grid-cols-2 xl:grid-cols-3'>
-                {departments.data
-                  ?.filter((row) => matches(row.name))
-                  .map((row) => (
-                    <section key={row.id} className='enterprise-panel p-5'>
-                      <div className='flex items-start justify-between gap-3'>
-                        <div className='flex min-w-0 items-center gap-3'>
-                          <span className='bg-primary/10 text-primary flex size-10 shrink-0 items-center justify-center rounded-xl'>
-                            <Users className='size-5' aria-hidden='true' />
-                          </span>
-                          <h3 className='truncate font-semibold'>{row.name}</h3>
-                        </div>
-                        <StaticRowActions
-                          editLabel={t('Edit {{name}}', { name: row.name })}
-                          deleteLabel={t('Delete')}
-                          menuLabel={t('Actions for {{name}}', {
-                            name: row.name,
-                          })}
-                          onEdit={() =>
-                            setEditor({ kind: 'departments', value: row })
-                          }
-                          onDelete={() => setRemoveTarget(row)}
-                        />
-                      </div>
-                      <p className='text-muted-foreground mt-4 line-clamp-2 min-h-10 text-sm'>
-                        {row.description || '—'}
-                      </p>
-                      <div className='mt-4 grid grid-cols-3 gap-3 border-t pt-4 text-sm'>
-                        <div>
-                          <p className='text-muted-foreground text-xs'>
-                            {t('Employees')}
-                          </p>
-                          <p className='mt-1 font-semibold'>
-                            {formatNumber(row.employee_count ?? 0, locale)}
-                          </p>
-                        </div>
-                        <div>
-                          <p className='text-muted-foreground text-xs'>
-                            {t('API Keys')}
-                          </p>
-                          <p className='mt-1 font-semibold'>
-                            {formatNumber(row.key_count ?? 0, locale)}
-                          </p>
-                        </div>
-                        <div>
-                          <p className='text-muted-foreground text-xs'>
-                            {t('Usage cost')}
-                          </p>
-                          <p className='mt-1 font-semibold'>
-                            {money(row.cost ?? 0)}
-                          </p>
-                        </div>
-                      </div>
-                    </section>
-                  ))}
-                {!departments.data?.some((row) => matches(row.name)) && (
-                  <EmptyState title={t('No results found.')} />
-                )}
-              </div>
-            )}
+            </div>
+            <div className='p-2'>
+              <StaticDataTable
+                data={keyRows}
+                columns={keyColumns}
+                getRowKey={(row) => row.token_id}
+                tableClassName='min-w-[640px]'
+                emptyContent={<EmptyState title={t('No results found.')} />}
+              />
+            </div>
           </>
         )}
-      </Tabs>
+      </div>
       {editor && (
         <OrganizationEditor
           target={editor}
@@ -492,7 +456,7 @@ export function OrganizationPage(props: {
         }}
         title={t('Delete {{name}}?', { name: removeTarget?.name })}
         desc={
-          props.section === 'keys'
+          removeTarget?.kind === 'keys'
             ? t(
                 'Remove this assignment? The API key remains available in Key management.'
               )
@@ -501,7 +465,9 @@ export function OrganizationPage(props: {
               )
         }
         destructive
-        confirmText={props.section === 'keys' ? t('Unassign') : t('Delete')}
+        confirmText={
+          removeTarget?.kind === 'keys' ? t('Unassign') : t('Delete')
+        }
         isLoading={deletion.isPending}
         handleConfirm={() => deletion.mutate()}
       />

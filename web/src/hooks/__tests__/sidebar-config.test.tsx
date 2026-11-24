@@ -125,7 +125,6 @@ describe('flat console navigation and legacy visibility', () => {
         '/usage-logs/task',
         '/usage-logs/drawing',
         '/enterprise/employees',
-        '/enterprise/departments',
         '/keys',
         '/wallet',
         '/profile',
@@ -139,6 +138,22 @@ describe('flat console navigation and legacy visibility', () => {
         '/system-info',
       ])
     )
+  })
+
+  it('organization uses one destination and keeps legacy department and member URLs active', () => {
+    const { result } = sidebarFor()
+    const organization = result.current
+      .flatMap((group) => group.items)
+      .find((item) => item.url === '/enterprise/employees')
+    expect(organization).toBeDefined()
+    expect(organization?.pages).toBeUndefined()
+    for (const url of [
+      '/enterprise/employees',
+      '/enterprise/members',
+      '/enterprise/departments',
+    ]) {
+      expect(organization && checkIsActive(url, organization)).toBe(true)
+    }
   })
 
   it('legacy audit toggle independently hides the audit destination', () => {

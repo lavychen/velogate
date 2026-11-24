@@ -41,7 +41,7 @@ import type { Department, Employee } from '../api-types'
 import { useRefreshEnterprise } from '../hooks/use-enterprise'
 
 export type OrganizationTarget =
-  | { kind: 'employees'; value?: Employee }
+  | { kind: 'employees'; value?: Employee; departmentId?: number }
   | { kind: 'departments'; value?: Department }
 export function OrganizationEditor(props: {
   target: OrganizationTarget
@@ -95,6 +95,9 @@ export function OrganizationEditor(props: {
       remark: employee?.remark ?? department?.description ?? '',
       department_id: String(
         employee?.department_id ??
+          (props.target.kind === 'employees'
+            ? props.target.departmentId
+            : undefined) ??
           props.departments.find((row) => row.status === 1)?.id ??
           ''
       ),

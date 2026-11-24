@@ -126,14 +126,7 @@ export function useSidebarData(badges: SidebarBadges = {}): SidebarData {
             title: t('Organization & members'),
             url: '/enterprise/employees',
             icon: Building2,
-            pages: [
-              {
-                title: t('Employees'),
-                url: '/enterprise/employees',
-                activeUrls: ['/enterprise/members'],
-              },
-              { title: t('Departments'), url: '/enterprise/departments' },
-            ],
+            activeUrls: ['/enterprise/members', '/enterprise/departments'],
           },
           {
             title: t('Key management'),
