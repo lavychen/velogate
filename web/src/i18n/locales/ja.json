@@ -2559,6 +2559,7 @@
     "Enterprise management": "企業管理",
     "Enterprise usage": "企業の使用量",
     "Enterprise workspace": "企業ワークスペース",
+    "Enterprise workspace · {{username}} (shared account wallet)": "企業スペース · {{username}}（アカウントのウォレットを共有）",
     "Enterprise-grade security with comprehensive permission management": "包括的な権限管理を備えたエンタープライズグレードのセキュリティ",
     "Entries configured in Request Header Override still take priority": "リクエストヘッダー上書きで設定した項目が引き続き優先されます",
     "Entrypoint (space separated)": "Entrypoint (スペース区切り)",

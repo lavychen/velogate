@@ -2559,6 +2559,7 @@
     "Enterprise management": "企业管理",
     "Enterprise usage": "企业用量",
     "Enterprise workspace": "企业空间",
+    "Enterprise workspace · {{username}} (shared account wallet)": "企业空间 · {{username}}（共用账户钱包）",
     "Enterprise-grade security with comprehensive permission management": "企业级安全性，提供全面的权限管理",
     "Entries configured in Request Header Override still take priority": "请求头覆盖中手动配置的项仍然优先",
     "Entrypoint (space separated)": "入口点 (空格分隔)",

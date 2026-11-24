@@ -37,39 +37,51 @@ export function EnterpriseWorkspace() {
   const user = useAuthStore((state) => state.auth.user)
   const workspace = useWorkspace()
   const name = workspace.data?.name || t('Enterprise workspace')
-  let content = <OrganizationPage section='employees' />
-  if (section === 'departments') {
-    content = <OrganizationPage section='departments' />
-  }
+  const isOrganization = ['members', 'employees', 'departments'].includes(
+    section
+  )
+  let content = (
+    <OrganizationPage
+      section={section === 'departments' ? 'departments' : 'employees'}
+      workspaceLabel={t(
+        'Enterprise workspace · {{username}} (shared account wallet)',
+        {
+          username: user?.username || name,
+        }
+      )}
+    />
+  )
   if (section === 'keys') content = <OrganizationPage section='keys' />
   if (section === 'analytics') {
     content = <AnalyticsPage initialDimension={search.dimension} />
   }
   return (
     <SectionPageLayout fluid={section === 'keys' || section === 'analytics'}>
-      <SectionPageLayout.Header>
-        <section className='flex flex-wrap items-center justify-between gap-3 py-1'>
-          <div className='flex min-w-0 items-center gap-3'>
-            <IconBadge tone='primary' size='lg'>
-              <Building2 className='size-5' aria-hidden='true' />
-            </IconBadge>
-            <div className='min-w-0'>
-              <h1 className='truncate text-lg font-semibold tracking-tight'>
-                {name}
-              </h1>
-              <p className='text-muted-foreground mt-1 max-w-2xl text-xs'>
-                {t('Account {{username}} · Shared wallet for assigned keys', {
-                  username: user?.username ?? '',
-                })}
-              </p>
+      {!isOrganization && (
+        <SectionPageLayout.Header>
+          <section className='flex flex-wrap items-center justify-between gap-3 py-1'>
+            <div className='flex min-w-0 items-center gap-3'>
+              <IconBadge tone='primary' size='lg'>
+                <Building2 className='size-5' aria-hidden='true' />
+              </IconBadge>
+              <div className='min-w-0'>
+                <h1 className='truncate text-lg font-semibold tracking-tight'>
+                  {name}
+                </h1>
+                <p className='text-muted-foreground mt-1 max-w-2xl text-xs'>
+                  {t('Account {{username}} · Shared wallet for assigned keys', {
+                    username: user?.username ?? '',
+                  })}
+                </p>
+              </div>
             </div>
-          </div>
-          <Button variant='outline' size='sm' render={<Link to='/wallet' />}>
-            <Wallet className='size-4' aria-hidden='true' />
-            {t('Wallet & billing')}
-          </Button>
-        </section>
-      </SectionPageLayout.Header>
+            <Button variant='outline' size='sm' render={<Link to='/wallet' />}>
+              <Wallet className='size-4' aria-hidden='true' />
+              {t('Wallet & billing')}
+            </Button>
+          </section>
+        </SectionPageLayout.Header>
+      )}
       <SectionPageLayout.Content>
         <div className='space-y-4'>{content}</div>
       </SectionPageLayout.Content>

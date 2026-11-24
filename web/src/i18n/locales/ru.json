@@ -2559,6 +2559,7 @@
     "Enterprise management": "Управление организацией",
     "Enterprise usage": "Использование организацией",
     "Enterprise workspace": "Пространство компании",
+    "Enterprise workspace · {{username}} (shared account wallet)": "Корпоративное пространство · {{username}} (общий кошелёк аккаунта)",
     "Enterprise-grade security with comprehensive permission management": "Безопасность корпоративного уровня с комплексным управлением разрешениями",
     "Entries configured in Request Header Override still take priority": "Записи из переопределения заголовков по-прежнему имеют приоритет",
     "Entrypoint (space separated)": "Точка входа (через пробелы)",

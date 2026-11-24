@@ -127,7 +127,7 @@ afterEach(() => {
   useAuthStore.getState().auth.reset()
 })
 
-async function renderAnalytics() {
+async function renderAnalytics(section = 'analytics') {
   const root = createRootRoute()
   const authenticated = createRoute({
     getParentRoute: () => root,
@@ -141,7 +141,9 @@ async function renderAnalytics() {
   })
   const router = createRouter({
     routeTree: root.addChildren([authenticated.addChildren([enterprise])]),
-    history: createMemoryHistory({ initialEntries: ['/enterprise/analytics'] }),
+    history: createMemoryHistory({
+      initialEntries: [`/enterprise/${section}`],
+    }),
   })
   await router.load()
   render(
@@ -152,6 +154,56 @@ async function renderAnalytics() {
     </QueryClientProvider>
   )
 }
+
+test('organization combines workspace context and actions, with searchable employees and departments in one card', async () => {
+  const user = userEvent.setup()
+  await renderAnalytics('employees')
+  const row = await screen.findByRole('row', { name: /Alice/ })
+  expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
+    'Organization & members'
+  )
+  expect(
+    screen.getByText('Enterprise workspace · owner (shared account wallet)')
+  ).toBeVisible()
+  expect(
+    screen.getByRole('button', { name: 'Wallet & billing' })
+  ).toHaveAttribute('href', '/wallet')
+  expect(screen.getByRole('button', { name: 'Add employee' })).toBeVisible()
+  expect(
+    screen.queryByRole('button', { name: 'Assign Key' })
+  ).not.toBeInTheDocument()
+  expect(within(row).getByText('ID: 2')).toBeVisible()
+  for (const name of ['API Keys', 'Requests', 'Usage cost', 'Actions']) {
+    const header = screen.getByRole('columnheader', { name })
+    expect(header).toHaveClass('text-right', 'tabular-nums')
+    const index = screen.getAllByRole('columnheader').indexOf(header)
+    expect(within(row).getAllByRole('cell')[index]).toHaveClass(
+      'text-right',
+      'tabular-nums'
+    )
+  }
+  const employees = screen.getByRole('tab', { name: 'Employees' })
+  expect(employees).toHaveAttribute('aria-selected', 'true')
+  const card = employees.closest('[data-slot="tabs"]')
+  expect(card).toContainElement(screen.getByRole('table'))
+  expect(card).toContainElement(
+    screen.getByRole('textbox', { name: 'Search organization' })
+  )
+  await user.type(
+    screen.getByRole('textbox', { name: 'Search organization' }),
+    '2'
+  )
+  expect(screen.getByRole('row', { name: /Alice/ })).toBeVisible()
+  await user.clear(screen.getByRole('textbox', { name: 'Search organization' }))
+  await user.click(screen.getByRole('tab', { name: 'Departments' }))
+  expect(
+    await screen.findByRole('button', { name: 'Add department' })
+  ).toBeVisible()
+  expect(screen.getByRole('tab', { name: 'Departments' })).toHaveAttribute(
+    'aria-selected',
+    'true'
+  )
+})
 
 test('analytics overview keeps the trend, activity and three rankings visible without a detail table', async () => {
   await renderAnalytics()

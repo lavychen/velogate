@@ -2559,6 +2559,7 @@
     "Enterprise management": "Gestion d’entreprise",
     "Enterprise usage": "Utilisation d’entreprise",
     "Enterprise workspace": "Espace entreprise",
+    "Enterprise workspace · {{username}} (shared account wallet)": "Espace entreprise · {{username}} (portefeuille partagé)",
     "Enterprise-grade security with comprehensive permission management": "Sécurité de niveau entreprise avec gestion complète des autorisations",
     "Entries configured in Request Header Override still take priority": "Les entrées configurées dans la surcharge des en-têtes restent prioritaires",
     "Entrypoint (space separated)": "Point d'entrée (séparés par des espaces)",

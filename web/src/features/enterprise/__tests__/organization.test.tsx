@@ -23,7 +23,7 @@ import {
   createRouter,
   RouterProvider,
 } from '@tanstack/react-router'
-import { render, screen, within, waitFor } from '@testing-library/react'
+import { act, render, screen, within, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 
@@ -116,7 +116,9 @@ afterEach(() => {
   useKeyDialogStore.getState().close()
   localStorage.clear()
 })
-async function renderOrganization() {
+async function renderOrganization(
+  state: 'employees' | 'empty' | 'error' = 'employees'
+) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   })
@@ -140,7 +142,9 @@ async function renderOrganization() {
       <RouterProvider router={router} />
     </QueryClientProvider>
   )
-  await screen.findByRole('row', { name: /Ada/ })
+  if (state === 'employees') await screen.findByRole('row', { name: /Ada/ })
+  if (state === 'empty') await screen.findByText('No results found.')
+  if (state === 'error') await screen.findByRole('button', { name: 'Retry' })
   return client
 }
 
@@ -230,7 +234,7 @@ test('assigning a real key reveals it once and refreshes employee and homepage k
   expect(
     screen.queryByText('sk-vg-test-creation-secret')
   ).not.toBeInTheDocument()
-  await user.click(screen.getAllByRole('button', { name: 'Assign Key' })[0])
+  act(() => useKeyDialogStore.getState().show())
   expect(
     screen.queryByText('sk-vg-test-creation-secret')
   ).not.toBeInTheDocument()
@@ -240,10 +244,9 @@ test('assigning a real key reveals it once and refreshes employee and homepage k
 })
 
 test('empty organization disables key assignment continuation', async () => {
-  const user = userEvent.setup()
   vi.spyOn(api, 'get').mockResolvedValue({ data: { success: true, data: [] } })
-  await renderOrganizationEmpty()
-  await user.click(screen.getByRole('button', { name: 'Assign Key' }))
+  await renderOrganization('empty')
+  act(() => useKeyDialogStore.getState().show())
   expect(
     await screen.findByText(
       'Add an active department and employee before assigning a key.'
@@ -257,34 +260,10 @@ test('a failed organization query offers retry instead of an empty successful li
   vi.spyOn(api, 'get').mockResolvedValue({
     data: { success: false, message: 'Service unavailable' },
   })
-  const client = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  })
-  clients.push(client)
-  render(
-    <QueryClientProvider client={client}>
-      <OrganizationPage section='employees' />
-    </QueryClientProvider>
-  )
+  await renderOrganization('error')
   expect(await screen.findByRole('button', { name: 'Retry' })).toBeVisible()
   expect(screen.queryByText('No results found.')).not.toBeInTheDocument()
   vi.spyOn(api, 'get').mockResolvedValue({ data: { success: true, data: [] } })
   await user.click(screen.getByRole('button', { name: 'Retry' }))
   expect(await screen.findByText('No results found.')).toBeVisible()
 })
-
-async function renderOrganizationEmpty() {
-  const client = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  })
-  clients.push(client)
-  render(
-    <QueryClientProvider client={client}>
-      <TooltipProvider>
-        <OrganizationPage section='employees' />
-        <KeyAssignmentDialog />
-      </TooltipProvider>
-    </QueryClientProvider>
-  )
-  await screen.findByText('No results found.')
-}
