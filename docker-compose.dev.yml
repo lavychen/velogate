@@ -3,7 +3,8 @@
 # Usage:
 #   1. docker compose -f docker-compose.dev.yml up -d
 #   2. make dev-web
-#   3. Open http://localhost:5173 (Rsbuild dev server, API auto-proxied to :3000)
+#   3. Open http://localhost:5173 (Rsbuild dev server, API auto-proxied to :3010)
+#   Set DEV_API_PORT for both commands to override the published API port.
 #
 # Rebuild backend after Go code changes:
 #   docker compose -f docker-compose.dev.yml up -d --build new-api
@@ -19,11 +20,15 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.dev
+      args:
+        HTTP_PROXY: ${HTTP_PROXY:-${http_proxy:-}}
+        HTTPS_PROXY: ${HTTPS_PROXY:-${https_proxy:-}}
+        NO_PROXY: ${NO_PROXY:-${no_proxy:-}}
     image: new-api-dev:local
     container_name: new-api-dev
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "${DEV_API_PORT:-3010}:3000"
     volumes:
       - dev_data:/data
     environment:
