@@ -91,26 +91,43 @@ async function renderNavigation(path: string, role = 100, modules = '') {
   return router
 }
 
-test('audit page keeps nine flat sidebar links and marks the merged logs item and audit page as current', async () => {
+test('audit page selects its own sidebar destination without showing call log tabs', async () => {
   await renderNavigation('/usage-logs/audit')
   const sidebar = screen.getByRole('navigation', { name: 'Primary' })
-  expect(within(sidebar).getAllByRole('link')).toHaveLength(9)
+  expect(within(sidebar).getAllByRole('link')).toHaveLength(10)
   expect(
     within(sidebar).queryByRole('button', { expanded: false })
   ).not.toBeInTheDocument()
   expect(
-    within(sidebar).getByRole('link', { name: 'Logs & audit' })
-  ).toHaveAttribute('aria-current', 'page')
-  const content = screen.getByRole('navigation', { name: 'Logs & audit' })
-  expect(
-    within(content).getByRole('link', { name: 'Audit Logs' })
+    within(sidebar).getByRole('link', { name: 'Audit Logs' })
   ).toHaveAttribute('aria-current', 'page')
   expect(
-    within(content).getByRole('link', { name: 'Usage Logs' })
+    within(sidebar).getByRole('link', { name: 'Call Logs' })
   ).not.toHaveAttribute('aria-current')
+  expect(
+    screen.queryByRole('navigation', { name: 'Call Logs' })
+  ).not.toBeInTheDocument()
+})
+
+test('call logs keep their own tabs and exclude audit logs', async () => {
+  await renderNavigation('/usage-logs/task')
+  const sidebar = screen.getByRole('navigation', { name: 'Primary' })
+  expect(
+    within(sidebar).getByRole('link', { name: 'Call Logs' })
+  ).toHaveAttribute('aria-current', 'page')
+  expect(
+    within(sidebar).getByRole('link', { name: 'Audit Logs' })
+  ).not.toHaveAttribute('aria-current')
+  const content = screen.getByRole('navigation', { name: 'Call Logs' })
+  expect(
+    within(content).getByRole('link', { name: 'Task Logs' })
+  ).toHaveAttribute('aria-current', 'page')
+  expect(
+    within(content).queryByRole('link', { name: 'Audit Logs' })
+  ).not.toBeInTheDocument()
   expect(content).toHaveClass('shrink-0')
   expect(
-    within(content).getByRole('link', { name: 'Audit Logs' }).parentElement
+    within(content).getByRole('link', { name: 'Task Logs' }).parentElement
   ).toHaveClass('overflow-x-auto')
 })
 
@@ -121,7 +138,7 @@ test('settings category selection navigates to its first real page and leaves si
     within(screen.getByRole('navigation', { name: 'Primary' })).getAllByRole(
       'link'
     )
-  ).toHaveLength(9)
+  ).toHaveLength(10)
   await user.selectOptions(
     screen.getByRole('combobox', { name: 'Settings category' }),
     'Operations'
@@ -143,7 +160,7 @@ test('settings category selection navigates to its first real page and leaves si
 test('ordinary users cannot discover admin pages through merged wallet and dashboard navigation', async () => {
   await renderNavigation('/wallet', 1)
   const sidebar = screen.getByRole('navigation', { name: 'Primary' })
-  expect(within(sidebar).getAllByRole('link')).toHaveLength(6)
+  expect(within(sidebar).getAllByRole('link')).toHaveLength(7)
   expect(
     screen.queryByRole('link', { name: 'Redemption Codes' })
   ).not.toBeInTheDocument()

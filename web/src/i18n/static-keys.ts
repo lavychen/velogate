@@ -935,7 +935,7 @@ export const STATIC_I18N_KEYS = [
   'User management',
   'Key management',
   'Wallet & billing',
-  'Logs & audit',
+  'Call Logs',
   'Enterprise usage',
   'Settings category',
   'Assign Key',

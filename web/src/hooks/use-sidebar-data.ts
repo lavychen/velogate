@@ -22,6 +22,7 @@ import {
   KeyRound,
   Network,
   ScrollText,
+  ShieldCheck,
   Settings,
   Sparkles,
   Users,
@@ -38,7 +39,7 @@ import type {
 import { useWorkspace } from '@/features/enterprise/hooks/use-enterprise'
 import { ROLE } from '@/lib/roles'
 
-/** Nine flat destinations; related features remain accessible as page navigation. */
+/** Flat destinations; related features remain accessible as page navigation. */
 export function useSidebarData(badges: SidebarBadges = {}): SidebarData {
   const { t } = useTranslation()
   const workspace = useWorkspace()
@@ -85,15 +86,19 @@ export function useSidebarData(badges: SidebarBadges = {}): SidebarData {
             ],
           },
           {
-            title: t('Logs & audit'),
+            title: t('Call Logs'),
             url: '/usage-logs/common',
             icon: ScrollText,
             pages: [
               { title: t('Usage Logs'), url: '/usage-logs/common' },
-              { title: t('Audit Logs'), url: '/usage-logs/audit' },
               { title: t('Task Logs'), url: '/usage-logs/task' },
               { title: t('Drawing Logs'), url: '/usage-logs/drawing' },
             ],
+          },
+          {
+            title: t('Audit Logs'),
+            url: '/usage-logs/audit',
+            icon: ShieldCheck,
           },
         ],
       },

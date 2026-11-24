@@ -99,9 +99,9 @@ function sidebarFor(admin?: object, user?: object, canConfigure = true) {
 }
 
 describe('flat console navigation and legacy visibility', () => {
-  it('groups all destinations into exactly three groups and nine flat links', () => {
+  it('groups all destinations into exactly three groups and ten flat links', () => {
     const { result } = sidebarFor()
-    expect(result.current.map((group) => group.items.length)).toEqual([3, 3, 3])
+    expect(result.current.map((group) => group.items.length)).toEqual([4, 3, 3])
     expect(
       result.current
         .flatMap((group) => group.items)
@@ -134,7 +134,7 @@ describe('flat console navigation and legacy visibility', () => {
     )
   })
 
-  it('legacy audit toggle remains independent after logs merge into one destination', () => {
+  it('legacy audit toggle independently hides the audit destination', () => {
     const config = parseSidebarModulesAdmin(
       '{"console":{"enabled":true,"log":true}}'
     )
@@ -145,21 +145,28 @@ describe('flat console navigation and legacy visibility', () => {
     )
     const logs = result.current
       .flatMap((group) => group.items)
-      .find((item) => item.title === 'Logs & audit')
-    expect(logs?.pages?.map((page) => page.title)).not.toContain('Audit Logs')
+      .find((item) => item.title === 'Call Logs')
+    expect(
+      result.current.flatMap((group) => group.items).map((item) => item.title)
+    ).not.toContain('Audit Logs')
     expect(logs?.pages?.map((page) => page.title)).toContain('Usage Logs')
   })
 
-  it('hiding usage logs picks an available audit route and preserves its selected state', () => {
+  it('hiding usage logs picks a task route and keeps audit separate', () => {
     const { result } = sidebarFor({ console: { enabled: true, log: false } })
     const logs = result.current
       .flatMap((group) => group.items)
-      .find((item) => item.title === 'Logs & audit')
-    expect(logs?.url).toBe('/usage-logs/audit')
+      .find((item) => item.title === 'Call Logs')
+    expect(logs?.url).toBe('/usage-logs/task')
     expect(logs?.pages?.map((page) => page.title)).not.toContain('Usage Logs')
-    expect(logs && checkIsActive('/usage-logs/audit?filter=test', logs)).toBe(
+    expect(logs && checkIsActive('/usage-logs/task?filter=test', logs)).toBe(
       true
     )
+    const audit = result.current
+      .flatMap((group) => group.items)
+      .find((item) => item.title === 'Audit Logs')
+    expect(audit?.url).toBe('/usage-logs/audit')
+    expect(logs && checkIsActive('/usage-logs/audit', logs)).toBe(false)
   })
 
   it.each([
@@ -168,7 +175,7 @@ describe('flat console navigation and legacy visibility', () => {
     [undefined, { console: { enabled: true, audit: false } }],
     [undefined, { console: { enabled: false } }],
   ])(
-    'admin and user filters hide audit in page navigation (%j, %j)',
+    'admin and user filters hide the audit sidebar destination (%j, %j)',
     (admin, user) => {
       const { result } = sidebarFor(admin, user)
       expect(

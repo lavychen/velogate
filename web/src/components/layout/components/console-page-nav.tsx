@@ -27,7 +27,7 @@ import { useSidebarView } from '@/hooks/use-sidebar-view'
 import { checkIsActive } from '../lib/url-utils'
 import { ChatPresetsItem } from './chat-presets-item'
 
-/** Related screens share a content navigation bar while the nine sidebar items stay fixed. */
+/** Related screens share a content navigation bar while sidebar destinations stay fixed. */
 export function ConsolePageNav() {
   const { t } = useTranslation()
   const pathname = useLocation({ select: (location) => location.pathname })
