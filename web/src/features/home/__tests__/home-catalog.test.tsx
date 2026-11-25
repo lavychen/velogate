@@ -98,7 +98,7 @@ function CatalogFixture() {
 }
 
 describe('home catalog', () => {
-  it('filters real catalog data by provider, group and search and shows an empty result', async () => {
+  it('shows models from all providers and filters by group and search without a provider selector', async () => {
     client.setQueryData(['pricing'], {
       success: true,
       data: [
@@ -125,8 +125,9 @@ describe('home catalog', () => {
     await renderPage(<CatalogFixture />)
     const user = userEvent.setup()
     expect(screen.getByText('example-chat')).toBeVisible()
+    expect(screen.getByText('example-image')).toBeVisible()
     expect(
-      screen.queryByRole('option', { name: 'Not connected' })
+      screen.queryByRole('combobox', { name: 'Providers' })
     ).not.toBeInTheDocument()
     expect(
       screen.queryByRole('columnheader', { name: 'Context window' })
@@ -135,16 +136,6 @@ describe('home catalog', () => {
       screen.getByRole('columnheader', { name: 'Discount Rate' })
     ).toBeVisible()
     expect(screen.getAllByText('20% OFF')).toHaveLength(2)
-    await user.selectOptions(
-      screen.getByRole('combobox', { name: 'Providers' }),
-      '2'
-    )
-    expect(screen.queryByText('example-chat')).not.toBeInTheDocument()
-    expect(screen.getByText('example-image')).toBeVisible()
-    await user.selectOptions(
-      screen.getByRole('combobox', { name: 'Providers' }),
-      'all'
-    )
     await user.selectOptions(
       screen.getByRole('combobox', { name: 'Group' }),
       'premium'

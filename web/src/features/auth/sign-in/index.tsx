@@ -20,46 +20,51 @@ import { Link, useSearch } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 
 import { useStatus } from '@/hooks/use-status'
+import { useSystemConfig } from '@/hooks/use-system-config'
+import { DEFAULT_SYSTEM_NAME } from '@/lib/constants'
 
-import { AuthLayout } from '../auth-layout'
 import { TermsFooter } from '../components/terms-footer'
+import { SignInLayout } from './components/sign-in-layout'
 import { UserAuthForm } from './components/user-auth-form'
 
 export function SignIn() {
   const { t } = useTranslation()
   const { redirect } = useSearch({ from: '/(auth)/sign-in' })
   const { status } = useStatus()
+  const { systemName } = useSystemConfig()
+  const name = systemName === DEFAULT_SYSTEM_NAME ? 'VeloGate' : systemName
 
   return (
-    <AuthLayout>
-      <div className='w-full space-y-8'>
-        <div className='space-y-2'>
-          <h2 className='text-center text-2xl font-semibold tracking-tight sm:text-left'>
-            {t('Sign in')}
+    <SignInLayout
+      footer={
+        <TermsFooter variant='sign-in' status={status} className='leading-5' />
+      }
+    >
+      <div className='flex w-full flex-col gap-8'>
+        <div>
+          <h2 className='text-[28px] font-bold tracking-tight'>
+            {t('Welcome back')}
           </h2>
-          {!status?.self_use_mode_enabled &&
-            status?.register_enabled !== false && (
-              <p className='text-muted-foreground text-left text-sm sm:text-base'>
-                {t("Don't have an account?")}{' '}
-                <Link
-                  to='/sign-up'
-                  className='hover:text-primary font-medium underline underline-offset-4'
-                >
-                  {t('Sign up')}
-                </Link>
-                .
-              </p>
-            )}
+          <p className='text-muted-foreground mt-2 text-sm'>
+            {t('Sign in to your {{name}} console', { name })}
+          </p>
         </div>
 
         <UserAuthForm redirectTo={redirect} />
 
-        <TermsFooter
-          variant='sign-in'
-          status={status}
-          className='text-center'
-        />
+        {!status?.self_use_mode_enabled &&
+          status?.register_enabled !== false && (
+            <p className='text-muted-foreground text-center text-[13px]'>
+              {t("Don't have an account?")}{' '}
+              <Link
+                to='/sign-up'
+                className='text-primary font-semibold hover:underline'
+              >
+                {t('Sign up')}
+              </Link>
+            </p>
+          )}
       </div>
-    </AuthLayout>
+    </SignInLayout>
   )
 }

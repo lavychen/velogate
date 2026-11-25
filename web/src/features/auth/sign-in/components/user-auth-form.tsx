@@ -18,7 +18,7 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Link } from '@tanstack/react-router'
-import { Loader2, LogIn, KeyRound } from 'lucide-react'
+import { Loader2, ArrowRight, KeyRound, Mail, LockKeyhole } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
@@ -346,11 +346,9 @@ export function UserAuthForm({
     <Form {...form}>
       <form
         onSubmit={form.handleSubmit(onSubmit)}
-        className={cn('grid gap-4', className)}
+        className={cn('sign-in-form grid gap-5', className)}
         {...props}
       >
-        {hasAlternativeLogin && alternativeLoginMethods}
-
         {passwordLoginEnabled && (
           <>
             {/* Username Field */}
@@ -360,12 +358,21 @@ export function UserAuthForm({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>{t('Username or Email')}</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder={t('Enter your username or email')}
-                      {...field}
+                  <div className='relative'>
+                    <Mail
+                      className='text-muted-foreground pointer-events-none absolute start-3.5 top-3.5 size-[18px]'
+                      aria-hidden='true'
                     />
-                  </FormControl>
+                    <FormControl>
+                      <Input
+                        autoComplete='username'
+                        autoCapitalize='none'
+                        spellCheck={false}
+                        placeholder={t('Enter your username or email')}
+                        {...field}
+                      />
+                    </FormControl>
+                  </div>
                   <FormMessage />
                 </FormItem>
               )}
@@ -376,21 +383,30 @@ export function UserAuthForm({
               control={form.control}
               name='password'
               render={({ field }) => (
-                <FormItem className='relative'>
-                  <FormLabel>{t('Password')}</FormLabel>
-                  <FormControl>
-                    <PasswordInput
-                      placeholder={t('Enter password')}
-                      {...field}
+                <FormItem>
+                  <div className='flex flex-wrap items-center justify-between gap-2'>
+                    <FormLabel>{t('Password')}</FormLabel>
+                    <Link
+                      to='/forgot-password'
+                      className='text-primary text-xs font-medium hover:underline'
+                    >
+                      {t('Forgot password?')}
+                    </Link>
+                  </div>
+                  <div className='relative'>
+                    <LockKeyhole
+                      className='text-muted-foreground pointer-events-none absolute start-3.5 top-3.5 z-10 size-[18px]'
+                      aria-hidden='true'
                     />
-                  </FormControl>
+                    <FormControl>
+                      <PasswordInput
+                        autoComplete='current-password'
+                        placeholder={t('Enter password')}
+                        {...field}
+                      />
+                    </FormControl>
+                  </div>
                   <FormMessage />
-                  <Link
-                    to='/forgot-password'
-                    className='text-muted-foreground absolute end-0 -top-0.5 z-10 text-sm font-medium hover:opacity-75'
-                  >
-                    {t('Forgot password?')}
-                  </Link>
                 </FormItem>
               )}
             />
@@ -398,11 +414,15 @@ export function UserAuthForm({
             {/* Submit Button */}
             <Button
               type='submit'
-              className='mt-2 w-full justify-center gap-2'
+              className='sign-in-submit mt-1 h-11 w-full justify-center gap-2 rounded-xl'
               disabled={isLoading}
             >
-              {isLoading ? <Loader2 className='animate-spin' /> : <LogIn />}
               {t('Sign in')}
+              {isLoading ? (
+                <Loader2 className='animate-spin' aria-hidden='true' />
+              ) : (
+                <ArrowRight aria-hidden='true' />
+              )}
             </Button>
 
             {/* Turnstile */}
@@ -426,7 +446,7 @@ export function UserAuthForm({
           className='mt-1'
         />
 
-        {!hasAlternativeLogin && alternativeLoginMethods}
+        {hasAlternativeLogin && alternativeLoginMethods}
       </form>
 
       {hasWeChatLogin && (

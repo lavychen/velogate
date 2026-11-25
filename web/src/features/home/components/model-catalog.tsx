@@ -47,13 +47,10 @@ export function ModelCatalog(props: {
   const { t, i18n } = useTranslation()
   const locale = toIntlLocale(i18n.resolvedLanguage || i18n.language)
   const [search, setSearch] = useState('')
-  const [vendor, setVendor] = useState('all')
   const [group, setGroup] = useState('all')
   const catalog = props.catalog
   const filtered = filterBySearch(catalog.models, search.trim()).filter(
-    (model) =>
-      (vendor === 'all' || String(model.vendor_id) === vendor) &&
-      (group === 'all' || model.enable_groups.includes(group))
+    (model) => group === 'all' || model.enable_groups.includes(group)
   )
   const groups = Object.keys(catalog.usableGroup).filter(
     (name) => name !== 'auto'
@@ -203,20 +200,6 @@ export function ModelCatalog(props: {
         </div>
         {catalog.canViewPricing && (
           <div className='mb-5 flex flex-wrap items-center gap-3'>
-            <NativeSelect
-              value={vendor}
-              onChange={(event) => setVendor(event.target.value)}
-              aria-label={t('Providers')}
-            >
-              <NativeSelectOption value='all'>
-                {t('All providers')}
-              </NativeSelectOption>
-              {catalog.vendors.map((item) => (
-                <NativeSelectOption key={item.id} value={String(item.id)}>
-                  {item.name}
-                </NativeSelectOption>
-              ))}
-            </NativeSelect>
             <NativeSelect
               value={group}
               onChange={(event) => setGroup(event.target.value)}

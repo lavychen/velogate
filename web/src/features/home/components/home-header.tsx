@@ -28,6 +28,7 @@ import { ThemeSwitch } from '@/components/theme-switch'
 import { Button } from '@/components/ui/button'
 import { useTopNavLinks } from '@/hooks/use-top-nav-links'
 import { cn } from '@/lib/utils'
+import { useAuthStore } from '@/stores/auth-store'
 
 import { HomeBrand } from './home-brand'
 
@@ -50,6 +51,7 @@ export interface HomeHeaderProps {
 
 export function HomeHeader(props: HomeHeaderProps) {
   const { t } = useTranslation()
+  const isAuthenticated = useAuthStore((state) => !!state.auth.user)
   const [mobileOpen, setMobileOpen] = useState(false)
   const dynamicLinks = useTopNavLinks()
   const links =
@@ -84,7 +86,7 @@ export function HomeHeader(props: HomeHeaderProps) {
             <NavLinkList
               links={links}
               onLinkClick={props.onLinkClick}
-              itemClassName='home-nav-link shrink-0 rounded-lg px-3 py-2 text-[13px] font-medium whitespace-nowrap'
+              itemClassName='home-nav-link shrink-0 rounded-lg px-3 py-2 text-[15px] font-medium whitespace-nowrap'
             />
           </nav>
         )}
@@ -96,7 +98,7 @@ export function HomeHeader(props: HomeHeaderProps) {
                 onClick={props.onToolbox}
                 title={t('Token inspector and cost estimator')}
                 aria-label={t('Developer toolbox')}
-                className='text-muted-foreground h-auto gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium'
+                className='text-muted-foreground h-auto gap-1.5 rounded-lg px-2.5 py-1.5 text-[15px] font-medium'
               >
                 <Sliders
                   aria-hidden='true'
@@ -113,10 +115,12 @@ export function HomeHeader(props: HomeHeaderProps) {
               {props.showLanguageSwitcher !== false && <LanguageSwitcher />}
               {showConsole && (
                 <Button
-                  className='home-primary hidden h-auto gap-1 rounded-lg px-4 py-2 text-xs font-semibold shadow-xs sm:inline-flex'
+                  className='home-primary hidden h-auto gap-1 rounded-lg px-4 py-2 text-[15px] font-semibold shadow-xs sm:inline-flex'
                   render={<Link to='/dashboard' />}
                 >
-                  {t('Enter console')}
+                  {isAuthenticated
+                    ? t('Enter console')
+                    : t('Sign in to console')}
                   <ArrowUpRight aria-hidden='true' className='size-3.5' />
                 </Button>
               )}
@@ -150,7 +154,7 @@ export function HomeHeader(props: HomeHeaderProps) {
           <NavLinkList
             links={mobileLinks}
             onLinkClick={props.onLinkClick}
-            itemClassName='home-nav-link block py-2 text-sm font-medium'
+            itemClassName='home-nav-link block py-2 text-[15px] font-medium'
             onClick={() => setMobileOpen(false)}
           />
         </nav>

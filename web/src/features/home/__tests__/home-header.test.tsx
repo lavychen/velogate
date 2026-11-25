@@ -104,6 +104,30 @@ async function renderHeader(
   return router
 }
 
+test('updates the console button label when the visitor signs in and signs out', async () => {
+  await renderHeader()
+  expect(
+    screen.getByRole('button', { name: 'Sign in to console' })
+  ).toHaveAttribute('href', '/dashboard')
+
+  act(() => {
+    useAuthStore.getState().auth.setUser({
+      id: 1,
+      username: 'visitor',
+      role: 1,
+    })
+  })
+  expect(screen.getByRole('button', { name: 'Enter console' })).toHaveAttribute(
+    'href',
+    '/dashboard'
+  )
+
+  act(() => useAuthStore.getState().auth.reset())
+  expect(
+    screen.getByRole('button', { name: 'Sign in to console' })
+  ).toHaveAttribute('href', '/dashboard')
+})
+
 test.each([undefined, '{invalid json'])(
   'shows the default backend navigation on desktop and mobile when configuration is %s',
   async (modules) => {
@@ -224,6 +248,9 @@ test('offers all seven languages and updates header navigation when a visitor sw
   expect(
     screen.getByRole('button', { name: 'Changer de langue' })
   ).toBeInTheDocument()
+  expect(
+    screen.getByRole('button', { name: 'Se connecter à la console' })
+  ).toHaveAttribute('href', '/dashboard')
 })
 
 test('public pages use the home header layout and return to the home route through the brand', async () => {
@@ -234,7 +261,7 @@ test('public pages use the home header layout and return to the home route throu
   expect(screen.getByRole('main')).not.toHaveClass('pt-20')
   expect(within(header).getByText('MaaS')).toBeVisible()
   expect(
-    within(header).getByRole('button', { name: 'Enter console' })
+    within(header).getByRole('button', { name: 'Sign in to console' })
   ).toHaveAttribute('href', '/dashboard')
   expect(
     within(header).getByRole('button', { name: 'Developer toolbox' })
