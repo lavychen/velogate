@@ -61,7 +61,11 @@ it('shows a valid empty page with navigation disabled', () => {
   ).toBeDisabled()
   expect(screen.getByRole('button', { name: 'Go to next page' })).toBeDisabled()
 })
-it('keeps page size selection available in the default layout', () => {
+it('preserves the default page size choices when no custom choices are provided', async () => {
   render(<Fixture />)
-  expect(screen.getByRole('combobox')).toBeVisible()
+  const user = userEvent.setup()
+  await user.click(screen.getByRole('combobox'))
+  expect(screen.getByRole('option', { name: '10' })).toBeVisible()
+  await user.click(screen.getByRole('option', { name: '20' }))
+  expect(screen.getByRole('combobox')).toHaveTextContent('20')
 })

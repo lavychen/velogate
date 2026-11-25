@@ -16,7 +16,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { type TFunction } from 'i18next'
+import type { TFunction } from 'i18next'
 
 import type { TokenUnit } from './types'
 
@@ -151,5 +151,6 @@ export const VIEW_MODES = {
 
 export type ViewMode = (typeof VIEW_MODES)[keyof typeof VIEW_MODES]
 
-/** Default page size for pricing table */
-export const DEFAULT_PRICING_PAGE_SIZE = 20
+/** Page sizes for the model marketplace */
+export const DEFAULT_PRICING_PAGE_SIZE = 18
+export const PRICING_PAGE_SIZE_OPTIONS = [18, 36, 54, 72, 90] as const

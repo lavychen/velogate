@@ -17,7 +17,14 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { ChevronDown, RotateCcw } from 'lucide-react'
-import { memo, useMemo, type ReactNode } from 'react'
+import {
+  memo,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { Badge } from '@/components/ui/badge'
@@ -74,6 +81,7 @@ export interface PricingSidebarProps {
   models: PricingModel[]
   hasActiveFilters: boolean
   onClearFilters: () => void
+  stickyWhenFits?: boolean
   className?: string
 }
 
@@ -170,6 +178,30 @@ export const PricingSidebar = memo(function PricingSidebar(
   props: PricingSidebarProps
 ) {
   const { t } = useTranslation()
+  const sidebarRef = useRef<HTMLElement>(null)
+  const [fitsViewport, setFitsViewport] = useState(false)
+
+  useEffect(() => {
+    const sidebar = sidebarRef.current
+    if (!props.stickyWhenFits || !sidebar) return
+
+    const updateFitsViewport = () => {
+      const height = sidebar.getBoundingClientRect().height
+      const top = Number.parseFloat(window.getComputedStyle(sidebar).top) || 0
+      setFitsViewport(height > 0 && height + top <= window.innerHeight)
+    }
+
+    const observer = new ResizeObserver(updateFitsViewport)
+    observer.observe(sidebar)
+    window.addEventListener('resize', updateFitsViewport)
+    updateFitsViewport()
+
+    return () => {
+      observer.disconnect()
+      window.removeEventListener('resize', updateFitsViewport)
+    }
+  }, [props.stickyWhenFits])
+
   const counts = useMemo(() => {
     const vendors = new Map<string, number>()
     const tags = new Map<string, number>()
@@ -279,8 +311,11 @@ export const PricingSidebar = memo(function PricingSidebar(
 
   return (
     <aside
+      ref={sidebarRef}
       className={cn(
         'bg-card rounded-2xl border p-5 shadow-xs',
+        props.stickyWhenFits && 'top-18',
+        props.stickyWhenFits && fitsViewport && 'sticky',
         props.className
       )}
     >

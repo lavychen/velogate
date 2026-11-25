@@ -219,6 +219,7 @@ export function Pricing() {
           <div className='mx-auto w-full max-w-[1380px] px-4 py-6 sm:px-6'>
             <div className='grid items-start gap-6 lg:grid-cols-[256px_minmax(0,1fr)]'>
               <PricingSidebar
+                stickyWhenFits
                 quotaTypeFilter={quotaTypeFilter}
                 endpointTypeFilter={endpointTypeFilter}
                 vendorFilter={vendorFilter}
@@ -236,7 +237,7 @@ export function Pricing() {
                 models={models || []}
                 hasActiveFilters={hasActiveFilters}
                 onClearFilters={clearFilters}
-                className='hover-scrollbar sticky top-20 hidden max-h-[calc(100dvh-6rem)] self-start overflow-y-auto lg:block'
+                className='hidden self-start lg:block'
               />
 
               <main className='min-w-0 space-y-4'>

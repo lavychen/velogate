@@ -38,6 +38,7 @@ import {
 import { CachedPriceCell } from '../components/cached-price-cell'
 import { ModelCard } from '../components/model-card'
 import { ModelCardGrid } from '../components/model-card-grid'
+import { PricingTable } from '../components/pricing-table'
 import type { PricingModel } from '../types'
 
 function pricingModel(overrides: Partial<PricingModel> = {}): PricingModel {
@@ -634,7 +635,7 @@ describe('model cards', () => {
     const request = vi.spyOn(api, 'get').mockResolvedValue({
       data: { success: true, data: { models: [] } },
     })
-    const models = Array.from({ length: 21 }, (_, index) =>
+    const models = Array.from({ length: 19 }, (_, index) =>
       pricingModel({ id: index + 1, model_name: `model-${index + 1}` })
     )
     const user = userEvent.setup()
@@ -644,24 +645,44 @@ describe('model cards', () => {
       </QueryClientProvider>
     )
     expect(screen.getByRole('button', { name: 'Previous page' })).toBeDisabled()
-    expect(screen.getAllByRole('heading', { level: 3 })).toHaveLength(20)
+    expect(screen.getAllByRole('heading', { level: 3 })).toHaveLength(18)
     expect(request).toHaveBeenCalledWith('/api/perf-metrics/summary', {
       params: {
         hours: 24,
-        recent_model: models.slice(0, 20).map((model) => model.model_name),
+        recent_model: models.slice(0, 18).map((model) => model.model_name),
       },
       paramsSerializer: { indexes: null },
     })
     await user.click(screen.getByRole('button', { name: 'Next page' }))
     expect(screen.getAllByRole('heading', { level: 3 })).toHaveLength(1)
-    expect(screen.getByRole('heading', { name: 'model-21' })).toBeVisible()
+    expect(screen.getByRole('heading', { name: 'model-19' })).toBeVisible()
     expect(request).toHaveBeenLastCalledWith('/api/perf-metrics/summary', {
-      params: { hours: 24, recent_model: ['model-21'] },
+      params: { hours: 24, recent_model: ['model-19'] },
       paramsSerializer: { indexes: null },
     })
     expect(screen.getByRole('button', { name: 'Next page' })).toBeDisabled()
     await user.click(screen.getByRole('button', { name: 'Previous page' }))
     expect(screen.getByRole('heading', { name: 'model-1' })).toBeVisible()
+  })
+
+  it('defaults the model table to 18 rows and lets users return to that page size', async () => {
+    const models = Array.from({ length: 19 }, (_, index) =>
+      pricingModel({ id: index + 1, model_name: `model-${index + 1}` })
+    )
+    render(<PricingTable models={models} />)
+    expect(screen.getAllByRole('row')).toHaveLength(19)
+    expect(screen.queryByText('model-19')).not.toBeInTheDocument()
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: 'Go to next page' }))
+    expect(screen.getByText('model-19')).toBeVisible()
+    expect(screen.getAllByRole('row')).toHaveLength(2)
+    await user.click(screen.getByRole('combobox'))
+    await user.click(screen.getByRole('option', { name: '36' }))
+    expect(screen.getAllByRole('row')).toHaveLength(20)
+    await user.click(screen.getByRole('combobox'))
+    await user.click(screen.getByRole('option', { name: '18' }))
+    expect(screen.getAllByRole('row')).toHaveLength(19)
+    expect(screen.getByRole('combobox')).toHaveTextContent('18')
   })
 
   it('switches the card grid to three columns at the xl breakpoint instead of 2xl', () => {

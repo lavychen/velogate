@@ -2,6 +2,7 @@ package controller
 
 import (
 	"maps"
+	"slices"
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/model"
@@ -21,16 +22,23 @@ func filterPricingByUsableGroups(pricing []model.Pricing, usableGroup map[string
 
 	filtered := make([]model.Pricing, 0, len(pricing))
 	for _, item := range pricing {
-		if common.StringsContains(item.EnableGroup, "all") {
+		if slices.Contains(item.EnableGroup, "all") {
+			item.EnableGroup = slices.Sorted(maps.Keys(usableGroup))
 			filtered = append(filtered, item)
 			continue
 		}
+		// The catalog is cached globally, so keep each viewer's groups separate.
+		groups := make([]string, 0, len(item.EnableGroup))
 		for _, group := range item.EnableGroup {
 			if _, ok := usableGroup[group]; ok {
-				filtered = append(filtered, item)
-				break
+				groups = append(groups, group)
 			}
 		}
+		if len(groups) == 0 {
+			continue
+		}
+		item.EnableGroup = groups
+		filtered = append(filtered, item)
 	}
 	return filtered
 }
