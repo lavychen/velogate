@@ -71,7 +71,8 @@ export function processChartData(
   data: QuotaDataItem[],
   timeGranularity: TimeGranularity = 'day',
   t?: TFunction,
-  chartCornerRadius?: number
+  chartCornerRadius?: number,
+  timeRange?: { start_timestamp: number; end_timestamp: number }
 ): ProcessedChartData {
   const tt: TFunction = t ?? ((x) => x)
   const otherLabel = tt('Other')
@@ -301,7 +302,15 @@ export function processChartData(
     )
     return padded
   }
-  const chartTimes = fillTimePoints(sortedTimes)
+  let chartTimes = fillTimePoints(sortedTimes)
+  if (timeRange && timeGranularity === 'hour') {
+    const firstHour = Math.floor(timeRange.start_timestamp / 3600) * 3600
+    const lastHour = Math.floor(timeRange.end_timestamp / 3600) * 3600
+    chartTimes = Array.from(
+      { length: Math.floor((lastHour - firstHour) / 3600) + 1 },
+      (_, index) => formatChartTime(firstHour + index * 3600, 'hour')
+    )
+  }
 
   const totalTimes = [...modelTotalsMap.values()].reduce(
     (sum, x) => sum + (Number(x.count) || 0),

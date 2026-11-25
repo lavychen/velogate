@@ -19,27 +19,30 @@ For commercial licensing, please contact support@quantumnous.com
 import { Plus } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
-import { ConfigDrawer } from '@/components/config-drawer'
 import { LanguageSwitcher } from '@/components/language-switcher'
 import { NotificationPopover } from '@/components/notification-popover'
 import { ProfileDropdown } from '@/components/profile-dropdown'
 import { Search } from '@/components/search'
 import { ThemeSwitch } from '@/components/theme-switch'
+import { badgeVariants } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { useKeyDialogStore } from '@/features/enterprise/key-dialog-store'
-import { SystemUpdateAction } from '@/features/system-update/system-update-action'
 import { useNotifications } from '@/hooks/use-notifications'
+import { useStatus } from '@/hooks/use-status'
 import { useTopNavLinks } from '@/hooks/use-top-nav-links'
+import { ROLE } from '@/lib/roles'
+import { cn } from '@/lib/utils'
+import { useAuthStore } from '@/stores/auth-store'
 
 import { defaultTopNavLinks } from '../config/top-nav.config'
 import type { TopNavLink } from '../types'
 import { ConsoleBreadcrumb } from './console-breadcrumb'
 import { Header } from './header'
-import { TopNav } from './top-nav'
+import { NavLinkList } from './nav-link-item'
 
 /**
  * General application Header component
- * Integrates navigation bar, search, configuration and profile functions
+ * Integrates navigation bar, search and profile functions
  *
  * @example
  * // Basic usage
@@ -89,11 +92,6 @@ type AppHeaderProps = {
    */
   showNotifications?: boolean
   /**
-   * Whether to show config drawer
-   * @default true
-   */
-  showConfigDrawer?: boolean
-  /**
    * Whether to show profile dropdown
    * @default true
    */
@@ -107,14 +105,24 @@ export function AppHeader({
   showSearch = true,
   rightContent,
   showNotifications = true,
-  showConfigDrawer = true,
   showProfileDropdown = true,
 }: AppHeaderProps) {
   const { t } = useTranslation()
+  const { status } = useStatus()
+  const isAdmin = useAuthStore(
+    (state) => (state.auth.user?.role ?? 0) >= ROLE.ADMIN
+  )
+  const runningVersion = status?.version?.trim()
+  const version =
+    runningVersion && runningVersion !== 'v0.0.0' && runningVersion !== '0.0.0'
+      ? runningVersion
+      : t('Unknown version')
   const showKeyDialog = useKeyDialogStore((state) => state.show)
   // Prioritize dynamically generated links from backend
   const dynamicLinks = useTopNavLinks()
-  const links = dynamicLinks.length > 0 ? dynamicLinks : navLinks
+  const links = (dynamicLinks.length > 0 ? dynamicLinks : navLinks).filter(
+    (link) => link.href === '/pricing'
+  )
 
   // Notifications hook
   const notifications = useNotifications()
@@ -123,9 +131,14 @@ export function AppHeader({
     <Header className='bg-card/95 h-15 border-b backdrop-blur-md'>
       <div className='@container/system-brand flex min-w-0 flex-1 items-center gap-1'>
         <ConsoleBreadcrumb />
-        <div className='hidden xl:block'>
-          <SystemUpdateAction presentation='version' />
-        </div>
+        {isAdmin && (
+          <span
+            className='text-muted-foreground hidden max-w-32 truncate px-1.5 font-mono text-xs xl:block'
+            title={version}
+          >
+            {version}
+          </span>
+        )}
       </div>
 
       {leftContent ? (
@@ -134,10 +147,19 @@ export function AppHeader({
 
       {rightContent ?? (
         <div className='ms-auto flex shrink-0 items-center gap-1 sm:gap-2'>
-          {showTopNav && (
-            <div className='me-1'>
-              <TopNav links={links} presentation='dropdown' />
-            </div>
+          {showTopNav && links.length > 0 && (
+            <nav
+              aria-label={t('Site navigation')}
+              className='me-1 hidden items-center gap-4 whitespace-nowrap md:flex'
+            >
+              <NavLinkList
+                links={links}
+                itemClassName={cn(
+                  badgeVariants({ variant: 'outline' }),
+                  'border-primary/20 bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary h-8 px-3'
+                )}
+              />
+            </nav>
           )}
           {showSearch && (
             <Search className='w-8 flex-none [&>span]:hidden sm:[&>span]:inline' />
@@ -164,7 +186,6 @@ export function AppHeader({
             <Plus aria-hidden='true' />
             <span className='hidden sm:inline'>{t('Assign Key')}</span>
           </Button>
-          {showConfigDrawer && <ConfigDrawer />}
           {showProfileDropdown && <ProfileDropdown />}
         </div>
       )}

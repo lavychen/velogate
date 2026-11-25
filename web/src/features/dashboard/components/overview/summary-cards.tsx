@@ -16,57 +16,37 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { useQuery } from '@tanstack/react-query'
+import type { UseQueryResult } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { ArrowRight, Hourglass, ShieldCheck, Wallet } from 'lucide-react'
-import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { StaggerContainer, StaggerItem } from '@/components/page-transition'
 import { Button } from '@/components/ui/button'
-import { getUserQuotaDates } from '@/features/dashboard/api'
+import type { getUserQuotaDates } from '@/features/dashboard/api'
 import { useSummaryCardsConfig } from '@/features/dashboard/hooks/use-dashboard-config'
 import { useStatus } from '@/hooks/use-status'
 import { toIntlLocale } from '@/i18n/languages'
 import { getCurrencyLabel, isCurrencyDisplayEnabled } from '@/lib/currency'
 import { formatNumber, formatQuota } from '@/lib/format'
-import { requireServerSuccess } from '@/lib/server-error-message'
-import { computeTimeRange } from '@/lib/time'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/stores/auth-store'
 
 import { StatCard } from '../ui/stat-card'
 
-export function SummaryCards() {
+export function SummaryCards(props: {
+  usageQuery: UseQueryResult<Awaited<ReturnType<typeof getUserQuotaDates>>>
+}) {
   const { t, i18n } = useTranslation()
   const locale = toIntlLocale(i18n.resolvedLanguage || i18n.language)
   const user = useAuthStore((state) => state.auth.user)
   const { status, loading } = useStatus()
-  const summaryTimeRange = useMemo(
-    () => computeTimeRange(1, undefined, new Date()),
-    []
-  )
   const remainQuota = user?.quota
   const hasBalance =
     typeof remainQuota === 'number' && Number.isFinite(remainQuota)
   const exhausted = hasBalance && remainQuota <= 0
 
-  const usageQuery = useQuery({
-    queryKey: [
-      'dashboard',
-      user?.id,
-      'overview',
-      'recent-usage',
-      summaryTimeRange.start_timestamp,
-      summaryTimeRange.end_timestamp,
-    ],
-    queryFn: async () =>
-      requireServerSuccess(
-        await getUserQuotaDates({ ...summaryTimeRange, default_time: 'hour' })
-      ),
-    enabled: !!user?.id,
-    staleTime: 60 * 1000,
-  })
+  const usageQuery = props.usageQuery
   const recentUsage = (usageQuery.data?.data ?? []).reduce(
     (total, item) => total + (Number(item.quota) || 0),
     0

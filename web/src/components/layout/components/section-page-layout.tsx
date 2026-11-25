@@ -60,6 +60,7 @@ export type SectionPageLayoutProps = {
   children: ReactNode
   fluid?: boolean
   fixedContent?: boolean
+  contentClassName?: string
   stackActionsOnMobile?: boolean
   /** Keep the title accessible when the console navigation already shows it. */
   hideTitle?: boolean
@@ -153,7 +154,8 @@ export function SectionPageLayout(props: SectionPageLayoutProps) {
               ? 'pt-3 sm:pt-5'
               : 'pt-1 sm:pt-1.5',
             props.fixedContent && 'overflow-hidden',
-            props.fluid && 'sm:px-6 lg:px-8'
+            props.fluid && 'sm:px-6 lg:px-8',
+            props.contentClassName
           )}
         >
           {content}

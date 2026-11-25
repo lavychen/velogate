@@ -56,6 +56,20 @@ import { useSystemConfigStore } from '@/stores/system-config-store'
 
 import { OverviewDashboard } from '../overview-dashboard'
 
+const chart = vi.hoisted(() =>
+  vi.fn(
+    (_props: {
+      spec: {
+        data: { values: { Time: string; Model: string; Count: number }[] }[]
+      }
+    }) => null
+  )
+)
+vi.mock('@visactor/react-vchart', () => ({ VChart: chart }))
+vi.mock('@visactor/vchart', () => ({
+  ThemeManager: { setCurrentTheme: vi.fn() },
+}))
+
 const getAnimationsDescriptor = Object.getOwnPropertyDescriptor(
   HTMLElement.prototype,
   'getAnimations'
@@ -152,6 +166,7 @@ beforeEach(() => {
 })
 
 afterEach(async () => {
+  vi.useRealTimers()
   cleanup()
   await i18next.changeLanguage('en')
   for (const language of ['zhCN', 'zhTW', 'fr', 'ja', 'ru', 'vi']) {
@@ -178,6 +193,70 @@ async function renderOverview() {
 }
 
 describe('overview layout', () => {
+  it('shows hourly model calls for the last 24 hours between usage and announcements using the shared request', async () => {
+    const now = new Date('2026-11-25T10:30:00Z')
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(now)
+    usageData = [
+      { created_at: 1795597200, model_name: 'gpt-4o', count: 2 },
+      { created_at: 1795597200, model_name: 'claude', count: 3 },
+    ]
+    await renderOverview()
+
+    const calls = await screen.findByRole('region', {
+      name: 'Model Call Overview',
+    })
+    expect(await within(calls).findByText('Last 24 hours')).toBeVisible()
+    expect(within(calls).getByText('Model Call Overview')).toBeVisible()
+    expect(within(calls).queryByText('5')).not.toBeInTheDocument()
+    expect(calls.parentElement?.parentElement).toHaveClass(
+      'no-scrollbar',
+      '[&_[data-slot=scroll-area-scrollbar]]:hidden',
+      '[&_[data-slot=scroll-area-viewport]]:no-scrollbar'
+    )
+    expect(within(calls).queryByRole('button')).not.toBeInTheDocument()
+    const usage = screen.getByRole('region', { name: 'Usage at a glance' })
+    expect(
+      usage.compareDocumentPosition(calls) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy()
+    expect(
+      calls.compareDocumentPosition(screen.getByText('Announcements')) &
+        Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy()
+    await waitFor(() => expect(chart).toHaveBeenCalled())
+    const values = chart.mock.lastCall?.[0].spec.data[0].values ?? []
+    expect(new Set(values.map((value) => value.Time)).size).toBe(25)
+    expect(values.filter((value) => value.Count > 0)).toEqual([
+      {
+        Time: expect.stringMatching(/\d{2}-\d{2} \d{2}:00/),
+        Model: 'claude',
+        Count: 3,
+      },
+      {
+        Time: expect.stringMatching(/\d{2}-\d{2} \d{2}:00/),
+        Model: 'gpt-4o',
+        Count: 2,
+      },
+    ])
+    const requests = vi
+      .mocked(api.get)
+      .mock.calls.filter(([url]) => url === '/api/data/self')
+    expect(requests).toHaveLength(1)
+    expect(requests[0][1]?.params).toEqual({
+      start_timestamp: Math.floor(now.getTime() / 1000) - 86400,
+      end_timestamp: Math.floor(now.getTime() / 1000),
+      default_time: 'hour',
+    })
+  })
+
+  it('shows an empty state for model calls when no calls were made', async () => {
+    await renderOverview()
+    const calls = await screen.findByRole('region', {
+      name: 'Model Call Overview',
+    })
+    expect(await within(calls).findByText('No data available')).toBeVisible()
+  })
+
   it('groups optional setup in a wrapping capsule and keeps key assignment available directly', async () => {
     const user = userEvent.setup()
     await renderOverview()
@@ -481,6 +560,13 @@ describe('overview layout', () => {
     expect(screen.queryByText('No recent usage')).not.toBeInTheDocument()
     expect(screen.queryByText('Healthy')).not.toBeInTheDocument()
     expect(screen.queryByText(/About .* days left/)).not.toBeInTheDocument()
+    const calls = screen.getByRole('region', { name: 'Model Call Overview' })
+    expect(
+      await within(calls).findByRole('button', { name: 'Retry' })
+    ).toBeVisible()
+    expect(
+      within(calls).queryByText('No data available')
+    ).not.toBeInTheDocument()
   })
 
   it.each([

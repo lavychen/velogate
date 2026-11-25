@@ -21,6 +21,8 @@ import { PieChart as PieChartIcon } from 'lucide-react'
 import { useEffect, useMemo, useState, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { EmptyState } from '@/components/empty-state'
+import { LoadingState } from '@/components/loading-state'
 import { IconBadge } from '@/components/ui/icon-badge'
 import { useThemeCustomization } from '@/context/theme-customization-provider'
 import { useTheme } from '@/context/theme-provider'
@@ -54,6 +56,11 @@ interface ModelChartsProps {
   loading?: boolean
   timeGranularity?: TimeGranularity
   defaultChartTab?: ModelAnalyticsChartTab
+  description?: string
+  title?: string
+  showTotal?: boolean
+  trendOnly?: boolean
+  timeRange?: { start_timestamp: number; end_timestamp: number }
 }
 
 export function ModelCharts(props: ModelChartsProps) {
@@ -102,12 +109,20 @@ export function ModelCharts(props: ModelChartsProps) {
         props.loading ? [] : props.data,
         timeGranularity,
         t,
-        chartRadius
+        chartRadius,
+        props.timeRange
       ),
-    [props.data, props.loading, timeGranularity, t, chartRadius]
+    [
+      props.data,
+      props.loading,
+      timeGranularity,
+      t,
+      chartRadius,
+      props.timeRange,
+    ]
   )
 
-  const spec = chartData[CHART_SPEC_KEYS[activeTab]]
+  const spec = chartData[CHART_SPEC_KEYS[props.trendOnly ? 'trend' : activeTab]]
   const specType = typeof spec?.type === 'string' ? spec.type : activeTab
   const chartKey = [
     activeTab,
@@ -125,44 +140,66 @@ export function ModelCharts(props: ModelChartsProps) {
           <IconBadge tone='chart-4' size='sm'>
             <PieChartIcon />
           </IconBadge>
-          <div className='text-sm font-semibold'>
-            {t('Model Call Analytics')}
+          <div>
+            <div className='text-sm font-semibold'>
+              {props.title ?? t('Model Call Analytics')}
+            </div>
+            {props.description && (
+              <p className='text-muted-foreground text-xs'>
+                {props.description}
+              </p>
+            )}
           </div>
-          <span className='text-muted-foreground text-xs'>
-            {t('Total:')} {chartData.totalCountDisplay}
-          </span>
+          {props.showTotal !== false && (
+            <span className='text-muted-foreground text-xs'>
+              {t('Total:')} {chartData.totalCountDisplay}
+            </span>
+          )}
         </div>
 
-        <div className='bg-muted/60 inline-flex h-7 w-full overflow-x-auto rounded-lg border p-0.5 sm:h-8 sm:w-auto'>
-          {MODEL_ANALYTICS_CHART_OPTIONS.map((tab) => (
-            <button
-              key={tab.value}
-              type='button'
-              onClick={() => setActiveTab(tab.value)}
-              className={`shrink-0 rounded-md px-3 text-xs font-medium transition-colors ${
-                activeTab === tab.value
-                  ? 'bg-background text-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              {t(tab.labelKey)}
-            </button>
-          ))}
-        </div>
+        {!props.trendOnly && (
+          <div className='bg-muted/60 inline-flex h-7 w-full overflow-x-auto rounded-lg border p-0.5 sm:h-8 sm:w-auto'>
+            {MODEL_ANALYTICS_CHART_OPTIONS.map((tab) => (
+              <button
+                key={tab.value}
+                type='button'
+                onClick={() => setActiveTab(tab.value)}
+                className={`shrink-0 rounded-md px-3 text-xs font-medium transition-colors ${
+                  activeTab === tab.value
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                {t(tab.labelKey)}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className='h-[300px] p-1.5 sm:h-96 sm:p-2'>
-        {themeReady && spec && (
-          <VChart
-            key={chartKey}
-            spec={{
-              ...spec,
-              theme: resolvedTheme === 'dark' ? 'dark' : 'light',
-              background: 'transparent',
-            }}
-            option={VCHART_OPTION}
+        {props.trendOnly && props.loading && (
+          <LoadingState className='h-full' />
+        )}
+        {props.trendOnly && !props.loading && props.data.length === 0 && (
+          <EmptyState
+            title={t('No data available')}
+            className='h-full min-h-0'
           />
         )}
+        {themeReady &&
+          spec &&
+          (!props.trendOnly || (!props.loading && props.data.length > 0)) && (
+            <VChart
+              key={chartKey}
+              spec={{
+                ...spec,
+                theme: resolvedTheme === 'dark' ? 'dark' : 'light',
+                background: 'transparent',
+              }}
+              option={VCHART_OPTION}
+            />
+          )}
       </div>
     </div>
   )
